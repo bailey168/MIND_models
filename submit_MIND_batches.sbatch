@@ -3,7 +3,7 @@
 #SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/MIND_processing.out
 #SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/MIND_processing.err
 #SBATCH --time=00:20:00
-#SBATCH --mem=0.6G
+#SBATCH --mem-per-cpu=0.6G
 #SBATCH --cpus-per-task=1
 #SBATCH --array=0-46113
 
