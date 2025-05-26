@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=MIND_batches
-#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/mind_%A_%a.out
-#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/mind_%A_%a.err
-#SBATCH --time=00:30:00
+#SBATCH --job-name=MIND_processing
+#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/MIND_processing.out
+#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/MIND_processing.err
+#SBATCH --time=00:20:00
 #SBATCH --mem=0.6G
 #SBATCH --cpus-per-task=1
 #SBATCH --array=0-46113
