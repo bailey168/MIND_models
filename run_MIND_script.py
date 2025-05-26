@@ -3,7 +3,6 @@
 import os
 import argparse
 import time
-from memory_profiler import profile
 from MIND import compute_MIND
 
 def main():
