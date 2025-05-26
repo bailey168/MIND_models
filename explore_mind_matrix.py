@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-df = pd.read_csv("/Users/baileyng/MIND/MIND_results/sub-001_MIND_matrix.csv", index_col=0)
+df = pd.read_csv("/Users/baileyng/MIND_data/MIND_results/1000177_20263_2_0_MIND_matrix.csv", index_col=0)
 
 print("Shape:", df.shape)
 print("\nHead:\n", df.head())
@@ -17,7 +17,7 @@ print("\nRow names:\n", list(df.index))
 
 plt.figure(figsize=(8, 8))
 sns.heatmap(df, cmap="viridis", square=True, xticklabels=1, yticklabels=1)
-plt.title("MIND Matrix Heatmap: sub-003")
+plt.title("MIND Matrix Heatmap")
 plt.xlabel("Region")
 plt.ylabel("Region")
 plt.tight_layout()
