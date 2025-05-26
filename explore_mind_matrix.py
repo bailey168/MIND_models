@@ -5,13 +5,13 @@ import seaborn as sns
 df = pd.read_csv("/Users/baileyng/MIND_data/MIND_results/1000177_20263_2_0_MIND_matrix.csv", index_col=0)
 
 print("Shape:", df.shape)
-print("\nHead:\n", df.head())
+# print("\nHead:\n", df.head())
 
 # Print all column names
-print("\nColumn names:\n", list(df.columns))
+# print("\nColumn names:\n", list(df.columns))
 
 # Print all row names
-print("\nRow names:\n", list(df.index))
+# print("\nRow names:\n", list(df.index))
 
 
 
