@@ -19,8 +19,8 @@ def main():
 
     # Choose features and parcellation
     features = ['CT', 'MC', 'Vol', 'SD', 'SA']
-    #parcellation = 'aparc'
-    parcellation = 'HCP-MMP'
+    parcellation = 'aparc'
+    #parcellation = 'HCP-MMP'
 
     subj = os.path.basename(os.path.normpath(subj_dir))
     print(f"Processing {subj}...")
