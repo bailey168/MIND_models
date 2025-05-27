@@ -23,7 +23,7 @@ missing_count=0
 counter=0
 
 # Use globbing instead of find
-for dir in "$DATA_DIR"/*20263_2_0; do
+for dir in "$DATA_DIR"/*20263_3_0; do
     # Skip non-directories
     [ -d "$dir" ] || continue
 
