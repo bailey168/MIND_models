@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --array=0-5
 
-source /Users/baileyng/MIND_models/venv/bin/activate
+source /external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/venv/bin/activate
 
 DATA_DIR=/external/rprshnas01/external_data/uk_biobank/imaging/brain/nifti/t1_surface/data/
 OUTPUT_DIR=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/MIND_results/
