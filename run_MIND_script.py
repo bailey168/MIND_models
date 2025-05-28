@@ -9,6 +9,7 @@ def main():
     parser = argparse.ArgumentParser(description="Run MIND on a subject")
     parser.add_argument("--subj_dir", type=str, help="Subject directory")
     parser.add_argument("--output_dir", type=str, help="Output directory for results")
+    parser.add_argument("--parcellation", type=str, help="Parcellation to use")
     args = parser.parse_args()
 
     # Input and output directories
@@ -19,11 +20,10 @@ def main():
 
     # Choose features and parcellation
     features = ['CT', 'MC', 'Vol', 'SD', 'SA']
-    parcellation = 'aparc'
-    # parcellation = 'HCP-MMP'
+    parcellation = args.parcellation
 
     subj = os.path.basename(os.path.normpath(subj_dir))
-    print(f"Processing {subj}...")
+    print(f"Processing {subj} with parcellation {parcellation}...")
     time_start = time.time()
 
     # Run MIND on subject
@@ -36,7 +36,7 @@ def main():
             resample=False,
             n_samples=4000
         )
-        output_csv = os.path.join(output_dir, f"{subj}_MIND_matrix.csv")
+        output_csv = os.path.join(output_dir, f"{subj}_{parcellation}_MIND_matrix.csv")
         mind_matrix.to_csv(output_csv)
 
         print(f"{subj}: Done in {time.time() - time_start:.2f} seconds. Saved to {output_csv}")

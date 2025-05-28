@@ -12,10 +12,11 @@ source /external/rprshnas01/tigrlab/scratch/bng/cartbind/code/venv/bin/activate
 
 DATA_DIR=/external/rprshnas01/external_data/uk_biobank/imaging/brain/nifti/t1_surface/data/
 OUTPUT_DIR=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/MIND_results/
+PARCELLATION=aparc
 
 mapfile -s $SLURM_ARRAY_TASK_ID \
 	-t -n1 SUBJECT < <(
     printf '%s\n' ${DATA_DIR}/*20263_2_0
 )
 
-python3 run_MIND_script.py --subj_dir "${SUBJECT[0]}" --output_dir "$OUTPUT_DIR"
+python3 run_MIND_script.py --subj_dir "${SUBJECT[0]}" --output_dir "$OUTPUT_DIR" --parcellation "$PARCELLATION"
