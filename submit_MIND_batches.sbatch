@@ -10,9 +10,9 @@
 module load Python/3.8
 source /external/rprshnas01/tigrlab/scratch/bng/cartbind/code/venv/bin/activate
 
-PATHS_FILE=/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/paths_aparc.loc
+PATHS_FILE=/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/paths_HCP-MMP.loc
 OUTPUT_DIR=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/MIND_results/
-PARCELLATION=aparc
+PARCELLATION=HCP-MMP
 
 mapfile -s $SLURM_ARRAY_TASK_ID \
     -t -n1 SUBJECT < "$PATHS_FILE"
