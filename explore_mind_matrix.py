@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-df = pd.read_csv("/Users/baileyng/MIND_data/MIND_results/1000177_20263_2_0_MIND_matrix.csv", index_col=0)
+df = pd.read_csv("/Users/baileyng/MIND_data/MIND_results/1000412_20263_2_0_MIND_matrix.csv", index_col=0)
 
 print("Shape:", df.shape)
 # print("\nHead:\n", df.head())
