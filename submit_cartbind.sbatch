@@ -1,17 +1,17 @@
 #!/bin/bash
 #SBATCH --job-name=MIND_processing
-#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/cartbind_logs/camh/MIND_processing_%J.out
-#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/cartbind_logs/camh/MIND_processing_%J.err
+#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/cartbind_logs/ubc/MIND_processing_%J.out
+#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/cartbind_logs/ubc/MIND_processing_%J.err
 #SBATCH --time=00:15:00
 #SBATCH --mem-per-cpu=600M
 #SBATCH --cpus-per-task=1
-#SBATCH --array=0-92
+#SBATCH --array=0-49
 
 module load Python/3.8
 source /external/rprshnas01/tigrlab/scratch/bng/cartbind/code/venv/bin/activate
 
-PATHS_FILE=/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/paths_aparc_camh.loc
-OUTPUT_DIR=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/cartbind_results/camh
+PATHS_FILE=/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/paths_aparc_ubc.loc
+OUTPUT_DIR=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/cartbind_results/ubc
 PARCELLATION=aparc
 
 mapfile -s $SLURM_ARRAY_TASK_ID \
