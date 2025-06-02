@@ -8,7 +8,7 @@ while read -r path; do
     path=${path%/}
     id=$(basename "$path")
 
-    csv_file="${CSV_DIR}/${id}_aparc_MIND_matrix.csv"
+    csv_file="${CSV_DIR}/${id}_HCP-MMP_MIND_matrix.csv"
     if [[ ! -f "$csv_file" ]]; then
         echo "$path" >> "$OUTPUT_FILE"
     fi
