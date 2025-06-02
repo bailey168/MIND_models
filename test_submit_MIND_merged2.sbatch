@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=test_MIND_processing
+#SBATCH --job-name=MIND_processing
 #SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_logs/MIND_processing_%J.out
 #SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_logs/MIND_processing_%J.err
 #SBATCH --time=00:25:00
@@ -10,7 +10,7 @@
 module load Python/3.8
 source /external/rprshnas01/tigrlab/scratch/bng/cartbind/code/venv/bin/activate
 
-PATHS_FILE=/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/subject_paths/paths_part_40
+PATHS_FILE=/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/subject_paths/paths_part_45
 OUTPUT_DIR_APARC=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc
 OUTPUT_DIR_HCP=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/HCP-MMP
 
