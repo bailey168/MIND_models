@@ -2,7 +2,7 @@
 #SBATCH --job-name=MIND_processing
 #SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/MIND_processing_%J.out
 #SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/MIND_processing_%J.err
-#SBATCH --time=00:30:00
+#SBATCH --time=00:25:00
 #SBATCH --mem-per-cpu=600M
 #SBATCH --cpus-per-task=1
 #SBATCH --array=0-999
