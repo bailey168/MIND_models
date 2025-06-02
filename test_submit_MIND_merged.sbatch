@@ -10,7 +10,7 @@
 module load Python/3.8
 source /external/rprshnas01/tigrlab/scratch/bng/cartbind/code/venv/bin/activate
 
-PATHS_FILE=/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/unprocessed_paths.loc
+PATHS_FILE=/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/unprocessed_paths_merged.loc
 OUTPUT_DIR_APARC=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc
 OUTPUT_DIR_HCP=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/HCP-MMP
 
