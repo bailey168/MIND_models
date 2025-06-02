@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=MIND_processing
-#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/opt_logs/ubc/MIND_processing_%J.out
-#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/opt_logs/ubc/MIND_processing_%J.err
+#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/opt_logs/MIND_processing_%J.out
+#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/opt_logs/MIND_processing_%J.err
 #SBATCH --time=00:15:00
 #SBATCH --mem-per-cpu=600M
 #SBATCH --cpus-per-task=1
