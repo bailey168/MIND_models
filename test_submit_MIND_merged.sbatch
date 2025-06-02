@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=MIND_processing
+#SBATCH --job-name=test_MIND_processing
 #SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_logs/MIND_processing_%J.out
 #SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_logs/MIND_processing_%J.err
 #SBATCH --time=00:30:00
