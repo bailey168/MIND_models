@@ -5,16 +5,16 @@
 #SBATCH --time=00:15:00
 #SBATCH --mem-per-cpu=600M
 #SBATCH --cpus-per-task=1
-#SBATCH --array=0-208
+#SBATCH --array=0-57
 
 module load Python/3.8
 source /external/rprshnas01/tigrlab/scratch/bng/cartbind/code/venv/bin/activate
 
-PATHS_FILE=/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/paths_aparc_opt.loc
+PATHS_FILE=/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/unprocessed_opt_paths.loc
 OUTPUT_DIR=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/opt_results
 PARCELLATION=aparc
 
-LINE_NUM=$((SLURM_ARRAY_TASK_ID + 1000))
+LINE_NUM=$((SLURM_ARRAY_TASK_ID + 0))
 mapfile -s $LINE_NUM \
     -t -n1 SUBJECT < "$PATHS_FILE"
 
