@@ -3,8 +3,8 @@ import numpy as np
 import glob
 import os
 
-input_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/MIND_results/aparc'
-output_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/MIND_results/aparc_avg'
+input_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc'
+output_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc_avg'
 
 os.makedirs(output_dir, exist_ok=True)
 
