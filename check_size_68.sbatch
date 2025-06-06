@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=check_size_68
-#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/matrix_logs/check_size_68_%J.out
-#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/matrix_logs/check_size_68_%J.err
+#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/matrix_logs/cartbind_check_size_68_%J.out
+#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/matrix_logs/cartbind_check_size_68_%J.err
 #SBATCH --time=02:00:00
 #SBATCH --mem-per-cpu=1G
 #SBATCH --cpus-per-task=1

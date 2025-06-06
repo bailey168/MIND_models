@@ -2,7 +2,7 @@ import pandas as pd
 import glob
 import os
 
-input_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc'
+input_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/cartbind_results'
 
 for csv_file in glob.glob(os.path.join(input_dir, '*_MIND_matrix.csv')):
     df_matrix = pd.read_csv(csv_file, index_col=0)
