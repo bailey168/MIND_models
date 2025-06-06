@@ -1,9 +1,9 @@
 #!/bin/bash
 
-SOURCE_DIR="/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/MIND_results/aparc"
+SOURCE_DIR="/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc_avg"
 
-TARGET_DIR_2="/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/MIND_results/aparc_2"
-TARGET_DIR_3="/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/MIND_results/aparc_3"
+TARGET_DIR_2="/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc_avg_2"
+TARGET_DIR_3="/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc_avg_3"
 
 mkdir -p "$TARGET_DIR_2"
 mkdir -p "$TARGET_DIR_3"
