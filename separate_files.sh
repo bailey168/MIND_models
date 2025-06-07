@@ -10,9 +10,9 @@ mkdir -p "$TARGET_DIR_3"
 
 for file in "$SOURCE_DIR"/*; do
     filename=$(basename "$file")
-    if [[ "filename" == *2_0_aparc_MIND_matrix.csv ]]; then
+    if [[ $filename == *2_0_aparc_MIND_matrix.csv ]]; then
         cp "$file" "$TARGET_DIR_2"
-    elif [[ "filename" == *3_0_aparc_MIND_matrix.csv ]]; then
+    elif [[ $filename == *3_0_aparc_MIND_matrix.csv ]]; then
         cp "$file" "$TARGET_DIR_3"
     fi
 done
