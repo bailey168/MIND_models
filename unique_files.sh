@@ -8,7 +8,7 @@ mkdir -p "$OUTPUT_DIR"
 
 declare -A prefix_lookup
 
-while IFS=read -r line; do
+while IFS= read -r line; do
     prefix="${line:0:7}"
     prefix_lookup["$prefix"]=1
 done < "$PATH_FILE"
