@@ -1,18 +1,24 @@
 #!/bin/bash
 
-dir1="/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc_avg_2"
-dir2="/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/HCP-MMP_avg"
-output_dir="/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc_avg_unique"
+SOURCE_DIR="/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc_avg_2"
+PATH_FILE="/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/pipe_paths/paths_HCP-MMP_base.loc"
+OUTPUT_DIR="/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc_avg_unique"
 
-mkdir -p "$output_dir"
+mkdir -p "$OUTPUT_DIR"
 
-for file1 in "$dir1"/*; do
-    base1=$(basename "$file1")
-    prefix1=${base1:0:7}
-    match=$(find "$dir2" -type f -name "${prefix1}*" | head -n 1)
-    if [[ -n "$match" ]]; then
-        cp "$file1" "$output_dir"
+declare -A prefix_lookup
+
+while IFS=read -r line; do
+    prefix="${line:0:7}"
+    prefix_lookup["$prefix"]=1
+done < "$PATH_FILE"
+
+for file in "$SOURCE_DIR"/*; do
+    base=$(basename "$file")
+    prefix=${base:0:7}
+    if [[ ${prefix_lookup["$prefix"]+_} ]]; then
+        cp "$file" "$OUTPUT_DIR"
     fi
 done
 
-echo "Files copied successfully from $dir1 to $output_dir"
+echo "Files copied successfully from $SOURCE_DIR to $OUTPUT_DIR"
