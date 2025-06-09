@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=avg_matrix_68
-#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/matrix_logs/cartbind_avg_matrix_68_%J.out
-#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/matrix_logs/cartbind_avg_matrix_68_%J.err
+#SBATCH --job-name=aggregate_HCP-MMP
+#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/aggregate_logs/aggregate_HCP-MMP_%J.out
+#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/aggregate_logs/aggregate_HCP-MMP_%J.err
 #SBATCH --time=02:00:00
-#SBATCH --mem-per-cpu=1G
+#SBATCH --mem-per-cpu=10G
 #SBATCH --cpus-per-task=1
 #SBATCH --array=0
 
