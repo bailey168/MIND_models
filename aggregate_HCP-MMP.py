@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 
-csv_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc_avg_unique'
+csv_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/HCP-MMP_avg'
 csv_files = [f for f in os.listdir(csv_dir)]
 
 sum_array = None
@@ -21,6 +21,6 @@ for file in csv_files:
 
 avg_array = sum_array / file_count
 avg_df = pd.DataFrame(avg_array, index=row_index, columns=col_names)
-output_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/average/aparc_average.csv'
+output_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/average/HCP-MMP_average.csv'
 avg_df.to_csv(output_path)
 print(f"Averaged {file_count} files. Saved to {output_path}")
