@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=extract_tabular
-#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/extract_tabular_68_%J.out
-#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/extract_tabular_68_%J.err
+#SBATCH --job-name=extract_tabular2
+#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/extract_tabular2_%J.out
+#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/extract_tabular2_%J.err
 #SBATCH --time=02:00:00
-#SBATCH --mem-per-cpu=61G
+#SBATCH --mem-per-cpu=10G
 #SBATCH --cpus-per-task=1
 #SBATCH --array=0
 
