@@ -36,7 +36,7 @@ cols = ['eid',
 with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/aparc_base_id.txt') as f:
     id_set = set(line.strip() for line in f)
 
-df = pd.read_csv('/external/rprshnas01/external_data/uk_biobank/tabular_data_csv/ukb51007.csv', usecols=cols)
+df = pd.read_csv('/external/rprshnas01/external_data/uk_biobank/tabular_data_csv/ukb51007.csv', usecols=cols, dtype=str)
 filtered_df = df[df['eid'].astype(str).isin(id_set)]
 filtered_df.to_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/ukb_tabular2.csv')
 

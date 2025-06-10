@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=extract_tabular2
-#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/extract_tabular2_%J.out
-#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/extract_tabular2_%J.err
+#SBATCH --job-name=extract_tabular2.2
+#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/extract_tabular2.2_%J.out
+#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/extract_tabular2.2_%J.err
 #SBATCH --time=02:00:00
 #SBATCH --mem-per-cpu=10G
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=2
 #SBATCH --array=0
 
 module load Python/3.8
