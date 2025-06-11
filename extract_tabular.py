@@ -31,16 +31,27 @@ cols = ['eid',
         '131091-0.0', '131093-0.0', '131095-0.0', '131097-0.0', '131099-0.0', '131101-0.0',
         '131103-0.0', '131105-0.0', '131107-0.0', '131109-0.0', '131111-0.0', '131113-0.0',
         '131115-0.0', '131117-0.0', '131119-0.0', '131121-0.0', '131123-0.0', '131125-0.0',
-        '131127-0.0']
+        '131127-0.0',
+        
+        '27174-2.0', '27267-2.0', '27175-2.0', '27268-2.0', '27176-2.0', '27269-2.0', '27177-2.0',
+        '27270-2.0', '27178-2.0', '27271-2.0', '27179-2.0', '27272-2.0', '27180-2.0', '27273-2.0',
+        '27204-2.0', '27297-2.0', '27181-2.0', '27274-2.0', '27182-2.0', '27275-2.0', '27183-2.0',
+        '27276-2.0', '27184-2.0', '27277-2.0', '27185-2.0', '27278-2.0', '27186-2.0', '27279-2.0',
+        '27188-2.0', '27281-2.0', '27187-2.0', '27280-2.0', '27189-2.0', '27282-2.0', '27190-2.0',
+        '27283-2.0', '27191-2.0', '27284-2.0', '27192-2.0', '27285-2.0', '27193-2.0', '27286-2.0',
+        '27194-2.0', '27287-2.0', '27195-2.0', '27288-2.0', '27196-2.0', '27289-2.0', '27197-2.0',
+        '27290-2.0', '27198-2.0', '27291-2.0', '27199-2.0', '27292-2.0', '27200-2.0', '27293-2.0',
+        '27201-2.0', '27294-2.0', '27202-2.0', '27295-2.0', '27203-2.0', '27296-2.0']
 
 with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/aparc_base_id.txt') as f:
     id_set = set(line.strip() for line in f)
 
 df = pd.read_csv('/external/rprshnas01/external_data/uk_biobank/tabular_data_csv/ukb51007.csv', usecols=cols, dtype=str)
 filtered_df = df[df['eid'].astype(str).isin(id_set)]
-filtered_df.to_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/ukb_tabular2.csv')
+filtered_df.to_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/ukb_tabular.csv')
 
-print("Filtered DataFrame saved to 'ukb_tabular2.csv'.")
+print(filtered_df.shape)
+print("Filtered DataFrame saved to 'ukb_tabular.csv'.")
 
 # duplicates = [item for item in cols if cols.count(item) > 1]
 # if duplicates:
