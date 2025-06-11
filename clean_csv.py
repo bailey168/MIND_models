@@ -48,8 +48,6 @@ df = df[include_cols.all(axis=1)]
 df = df[include].copy()
 
 # print(df.shape)
-# print(type(df['21003-0.0'][3]))
-# print(df['21003-0.0'][3])
 
 eids = df['eid'].tolist()
 
