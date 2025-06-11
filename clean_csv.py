@@ -65,12 +65,12 @@ for idx, eid in enumerate(eids):
     matrix_path = f'{MIND_dir}/{eid}_20263_2_0_aparc_MIND_matrix.csv'
     try:
         matrix = pd.read_csv(matrix_path, index_col=0, header=None)
-        matrix_values.iloc[idx] = matrix.iloc[:, 1].values
+        matrix_values.iloc[idx] = matrix.iloc[:, 0].values
     except Exception as e:
         print(f"Warning: Could not process {eid}: {e}")
         matrix_values.iloc[idx] = [None] * len(row_labels)
 
-df = pd.cancat([df.reset_index(drop=True), matrix_values.reset_index(drop=True)], axis=1)
+df = pd.concat([df.reset_index(drop=True), matrix_values.reset_index(drop=True)], axis=1)
 
 print(f"Final DataFrame shape: {df.shape}")
 df.to_csv(output_path, index=False)
