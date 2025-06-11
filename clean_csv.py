@@ -27,7 +27,7 @@ exclude = ['130837-0.0', '130839-0.0', '130841-0.0', '130843-0.0',
         '131115-0.0', '131117-0.0', '131119-0.0', '131121-0.0', '131123-0.0', '131125-0.0',
         '131127-0.0']
 
-include = ['eid', '31-0.0', '20016-0.0', '21003-0.0']
+include = ['eid', '31-0.0', '20016-2.0', '21003-2.0']
 
 # input_path = '/Users/baileyng/MIND_models/ukb_tabular2.csv'
 input_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/ukb_tabular2.csv'
@@ -55,7 +55,7 @@ eids = df['eid'].tolist()
 
 # Read row labels from the first file
 first_matrix_path = f'{MIND_dir}/{eids[0]}_20263_2_0_aparc_MIND_matrix.csv'
-row_labels = pd.read_csv(first_matrix_path, index_col=0, header=None).index.tolist()
+row_labels = pd.read_csv(first_matrix_path, index_col=0, header=None, skiprows=1).index.tolist()
 
 # Pre-allocate a new DataFrame
 matrix_values = pd.DataFrame(index=df.index, columns=row_labels)
@@ -64,7 +64,7 @@ matrix_values = pd.DataFrame(index=df.index, columns=row_labels)
 for idx, eid in enumerate(eids):
     matrix_path = f'{MIND_dir}/{eid}_20263_2_0_aparc_MIND_matrix.csv'
     try:
-        matrix = pd.read_csv(matrix_path, index_col=0, header=None)
+        matrix = pd.read_csv(matrix_path, index_col=0, header=None, skiprows=1)
         matrix_values.iloc[idx] = matrix.iloc[:, 0].values
     except Exception as e:
         print(f"Warning: Could not process {eid}: {e}")
