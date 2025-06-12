@@ -42,7 +42,7 @@ include = ['eid', '31-0.0', '20016-2.0', '21003-2.0',
 # input_path = '/Users/baileyng/MIND_models/ukb_tabular2.csv'
 input_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/ukb_tabular.csv'
 MIND_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc_avg_unique'
-output_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/ukb_FIS.csv'
+output_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/ukb_FIS_test.csv'
 
 df = pd.read_csv(input_path, dtype=str)
 
@@ -64,6 +64,8 @@ eids = df['eid'].tolist()
 # Read row labels from the first file
 first_matrix_path = f'{MIND_dir}/{eids[0]}_20263_2_0_aparc_MIND_matrix.csv'
 row_labels = pd.read_csv(first_matrix_path, index_col=0, header=None, skiprows=1).index.tolist()
+
+print(row_labels)
 
 # Pre-allocate a new DataFrame
 matrix_values = pd.DataFrame(index=df.index, columns=row_labels)

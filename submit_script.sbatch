@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=clean_csv3
-#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/clean_csv3_%J.out
-#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/clean_csv3_%J.err
+#SBATCH --job-name=clean_csv_test
+#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/clean_csv_test_%J.out
+#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/clean_csv_test_%J.err
 #SBATCH --time=01:00:00
 #SBATCH --mem-per-cpu=10G
 #SBATCH --cpus-per-task=1
