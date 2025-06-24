@@ -88,7 +88,7 @@ space = {
     'objective': 'binary:logistic',
     # Increase this number if you have more cores. Otherwise, remove it and it will default
     # to the maximum number.
-    # 'nthread': 4,
+    'nthread': 12,
     'booster': 'gbtree',
     'tree_method': 'hist',
     'seed': 42
