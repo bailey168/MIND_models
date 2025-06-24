@@ -8,6 +8,6 @@
 #SBATCH --array=0
 
 module load Python/3.8
-source /external/rprshnas01/tigrlab/scratch/bng/cartbind/code/venv/bin/activate
+source /external/rprshnas01/tigrlab/scratch/bng/cartbind/data/venv/bin/activate
 
 python3 XGBoost_FIS.py
