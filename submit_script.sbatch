@@ -3,7 +3,7 @@
 #SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/extract_tabular_with_site_%J.out
 #SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/extract_tabular_with_site_%J.err
 #SBATCH --time=1:00:00
-#SBATCH --mem-per-cpu=10G
+#SBATCH --mem-per-cpu=70G
 #SBATCH --cpus-per-task=1
 #SBATCH --array=0
 
