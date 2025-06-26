@@ -84,7 +84,6 @@ for idx, eid in enumerate(eids):
         matrix_values.iloc[idx] = [None] * len(row_labels)
 
 df = pd.concat([df.reset_index(drop=True), matrix_values.reset_index(drop=True)], axis=1)
-
 df = df.dropna()
 
 print(f"Final DataFrame shape: {df.shape}")
