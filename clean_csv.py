@@ -68,7 +68,7 @@ eids = df['eid'].tolist()
 first_matrix_path = f'{MIND_dir}/{eids[0]}_20263_2_0_aparc_MIND_matrix.csv'
 row_labels = pd.read_csv(first_matrix_path, index_col=0, header=None, skiprows=1).index.tolist()
 
-print(row_labels)
+# print(row_labels)
 
 # Pre-allocate a new DataFrame
 matrix_values = pd.DataFrame(index=df.index, columns=row_labels)
@@ -84,6 +84,8 @@ for idx, eid in enumerate(eids):
         matrix_values.iloc[idx] = [None] * len(row_labels)
 
 df = pd.concat([df.reset_index(drop=True), matrix_values.reset_index(drop=True)], axis=1)
+
+df = df.dropna()
 
 print(f"Final DataFrame shape: {df.shape}")
 df.to_csv(output_path, index=False)
