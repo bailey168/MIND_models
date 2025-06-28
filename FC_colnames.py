@@ -21,6 +21,8 @@ df = pd.DataFrame(columns=ICs_vector)
 # Step 6: Print or access the column names
 column_names = df.columns.tolist()
 
-with open('/Users/baileyng/MIND_models/FC_colnames.txt', 'w') as f:
-    for col in column_names:
-        f.write(f"{col}\n")
+print(column_names)
+
+# with open('/Users/baileyng/MIND_models/FC_colnames.txt', 'w') as f:
+#     for col in column_names:
+#         f.write(f"{col}\n")

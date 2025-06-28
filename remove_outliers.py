@@ -19,7 +19,7 @@ outlier_mask = np.abs(df[continuous_cols] - means) > (5 * stds)
 outlier_counts = outlier_mask.sum(axis=1)
 
 # Threshold
-threshold = len(continuous_cols) * 0.001
+threshold = len(continuous_cols) * 0.00001
 
 # Keep rows with fewer than threshold % outliers
 df_cleaned = df[outlier_counts < threshold]

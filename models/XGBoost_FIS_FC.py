@@ -41,29 +41,38 @@ else:
 
 # %%
 numerical_variables = ['age',
-                       
-        'lh_bankssts', 'lh_caudalanteriorcingulate', 'lh_caudalmiddlefrontal',
-        'lh_cuneus', 'lh_entorhinal', 'lh_fusiform', 'lh_inferiorparietal', 
-        'lh_inferiortemporal', 'lh_isthmuscingulate', 'lh_lateraloccipital', 
-        'lh_lateralorbitofrontal', 'lh_lingual', 'lh_medialorbitofrontal', 
-        'lh_middletemporal', 'lh_parahippocampal', 'lh_paracentral', 
-        'lh_parsopercularis', 'lh_parsorbitalis', 'lh_parstriangularis', 
-        'lh_pericalcarine', 'lh_postcentral', 'lh_posteriorcingulate', 
-        'lh_precentral', 'lh_precuneus', 'lh_rostralanteriorcingulate', 
-        'lh_rostralmiddlefrontal', 'lh_superiorfrontal', 'lh_superiorparietal', 
-        'lh_superiortemporal', 'lh_supramarginal', 'lh_frontalpole', 
-        'lh_temporalpole', 'lh_transversetemporal', 'lh_insula', 
-        'rh_bankssts', 'rh_caudalanteriorcingulate', 'rh_caudalmiddlefrontal', 
-        'rh_cuneus', 'rh_entorhinal', 'rh_fusiform', 'rh_inferiorparietal', 
-        'rh_inferiortemporal', 'rh_isthmuscingulate', 'rh_lateraloccipital', 
-        'rh_lateralorbitofrontal', 'rh_lingual', 'rh_medialorbitofrontal', 
-        'rh_middletemporal', 'rh_parahippocampal', 'rh_paracentral', 
-        'rh_parsopercularis', 'rh_parsorbitalis', 'rh_parstriangularis', 
-        'rh_pericalcarine', 'rh_postcentral', 'rh_posteriorcingulate', 
-        'rh_precentral', 'rh_precuneus', 'rh_rostralanteriorcingulate', 
-        'rh_rostralmiddlefrontal', 'rh_superiorfrontal', 'rh_superiorparietal', 
-        'rh_superiortemporal', 'rh_supramarginal', 'rh_frontalpole', 
-        'rh_temporalpole', 'rh_transversetemporal', 'rh_insula']
+        
+        'IC1IC2', 'IC1IC3', 'IC1IC4', 'IC1IC5', 'IC1IC6', 'IC1IC7', 'IC1IC8', 
+        'IC1IC9', 'IC1IC10', 'IC1IC11', 'IC1IC12', 'IC1IC13', 'IC1IC14', 
+        'IC1IC15', 'IC1IC16', 'IC1IC17', 'IC1IC18', 'IC1IC19', 'IC1IC20', 
+        'IC1IC21', 'IC2IC3', 'IC2IC4', 'IC2IC5', 'IC2IC6', 'IC2IC7', 'IC2IC8', 
+        'IC2IC9', 'IC2IC10', 'IC2IC11', 'IC2IC12', 'IC2IC13', 'IC2IC14', 'IC2IC15', 
+        'IC2IC16', 'IC2IC17', 'IC2IC18', 'IC2IC19', 'IC2IC20', 'IC2IC21', 'IC3IC4', 
+        'IC3IC5', 'IC3IC6', 'IC3IC7', 'IC3IC8', 'IC3IC9', 'IC3IC10', 'IC3IC11', 
+        'IC3IC12', 'IC3IC13', 'IC3IC14', 'IC3IC15', 'IC3IC16', 'IC3IC17', 'IC3IC18', 
+        'IC3IC19', 'IC3IC20', 'IC3IC21', 'IC4IC5', 'IC4IC6', 'IC4IC7', 'IC4IC8', 
+        'IC4IC9', 'IC4IC10', 'IC4IC11', 'IC4IC12', 'IC4IC13', 'IC4IC14', 'IC4IC15', 
+        'IC4IC16', 'IC4IC17', 'IC4IC18', 'IC4IC19', 'IC4IC20', 'IC4IC21', 'IC5IC6', 
+        'IC5IC7', 'IC5IC8', 'IC5IC9', 'IC5IC10', 'IC5IC11', 'IC5IC12', 'IC5IC13', 
+        'IC5IC14', 'IC5IC15', 'IC5IC16', 'IC5IC17', 'IC5IC18', 'IC5IC19', 'IC5IC20', 
+        'IC5IC21', 'IC6IC7', 'IC6IC8', 'IC6IC9', 'IC6IC10', 'IC6IC11', 'IC6IC12', 
+        'IC6IC13', 'IC6IC14', 'IC6IC15', 'IC6IC16', 'IC6IC17', 'IC6IC18', 'IC6IC19', 
+        'IC6IC20', 'IC6IC21', 'IC7IC8', 'IC7IC9', 'IC7IC10', 'IC7IC11', 'IC7IC12', 
+        'IC7IC13', 'IC7IC14', 'IC7IC15', 'IC7IC16', 'IC7IC17', 'IC7IC18', 'IC7IC19', 
+        'IC7IC20', 'IC7IC21', 'IC8IC9', 'IC8IC10', 'IC8IC11', 'IC8IC12', 'IC8IC13', 
+        'IC8IC14', 'IC8IC15', 'IC8IC16', 'IC8IC17', 'IC8IC18', 'IC8IC19', 'IC8IC20', 
+        'IC8IC21', 'IC9IC10', 'IC9IC11', 'IC9IC12', 'IC9IC13', 'IC9IC14', 'IC9IC15', 
+        'IC9IC16', 'IC9IC17', 'IC9IC18', 'IC9IC19', 'IC9IC20', 'IC9IC21', 'IC10IC11', 
+        'IC10IC12', 'IC10IC13', 'IC10IC14', 'IC10IC15', 'IC10IC16', 'IC10IC17', 'IC10IC18', 
+        'IC10IC19', 'IC10IC20', 'IC10IC21', 'IC11IC12', 'IC11IC13', 'IC11IC14', 'IC11IC15', 
+        'IC11IC16', 'IC11IC17', 'IC11IC18', 'IC11IC19', 'IC11IC20', 'IC11IC21', 'IC12IC13', 
+        'IC12IC14', 'IC12IC15', 'IC12IC16', 'IC12IC17', 'IC12IC18', 'IC12IC19', 'IC12IC20', 
+        'IC12IC21', 'IC13IC14', 'IC13IC15', 'IC13IC16', 'IC13IC17', 'IC13IC18', 'IC13IC19', 
+        'IC13IC20', 'IC13IC21', 'IC14IC15', 'IC14IC16', 'IC14IC17', 'IC14IC18', 'IC14IC19', 
+        'IC14IC20', 'IC14IC21', 'IC15IC16', 'IC15IC17', 'IC15IC18', 'IC15IC19', 'IC15IC20', 
+        'IC15IC21', 'IC16IC17', 'IC16IC18', 'IC16IC19', 'IC16IC20', 'IC16IC21', 'IC17IC18', 
+        'IC17IC19', 'IC17IC20', 'IC17IC21', 'IC18IC19', 'IC18IC20', 'IC18IC21', 'IC19IC20', 
+        'IC19IC21', 'IC20IC21']
 
 categorical_variables = ['assessment centre']
 
@@ -184,7 +193,7 @@ def hyper_parameter_optimization(data_df, input_variables, output_variable, nume
 
         columns = X_test.columns
         # print(data_x, data_y, best_hyperparameters, column_names)
-        dir_name = f'/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/hyperparameters/best_hyperparameters_MIND_06-28/{output_variable}/split_{splt_idx}'
+        dir_name = f'/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/hyperparameters/best_hyperparameters_FC_06-28/{output_variable}/split_{splt_idx}'
         makedirs(dir_name, exist_ok=True)
         column_names = np.array(list(columns))
         np.savez(join(dir_name, 'train_test_data.npz'), x_train=X_trainval, y_train=y_trainval,

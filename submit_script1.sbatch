@@ -3,7 +3,7 @@
 #SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/xgboost_logs/XGBoost_FIS_MIND_06-28_%J.out
 #SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/xgboost_logs/XGBoost_FIS_MIND_06-28_%J.err
 #SBATCH --time=72:00:00
-#SBATCH --mem-per-cpu=4G
+#SBATCH --mem-per-cpu=5G
 #SBATCH --cpus-per-task=12
 #SBATCH --array=0
 
