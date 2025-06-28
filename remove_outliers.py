@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 
-input_path = '/Users/baileyng/MIND_data/ukb_FIS.csv'
-output_path = '/Users/baileyng/MIND_data/ukb_FIS_no_outliers.csv'
+input_path = '/Users/baileyng/MIND_data/ukb_FIS_all.csv'
+output_path = '/Users/baileyng/MIND_data/ukb_FIS_all_no_outliers.csv'
 
 df = pd.read_csv(input_path, index_col=0)
 print("Initial shape of DataFrame:", df.shape)
@@ -25,4 +25,4 @@ threshold = len(continuous_cols) * 0.001
 df_cleaned = df[outlier_counts < threshold]
 
 print("Shape of DataFrame without outliers:", df_cleaned.shape)
-# df_cleaned.to_csv(output_path)
+df_cleaned.to_csv(output_path)

@@ -8,7 +8,7 @@ from os.path import join
 import xgboost as xgb
 import time
 from sklearn import preprocessing
-from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score, r2_score
 import sklearn.model_selection
 from hyperopt import STATUS_OK, Trials, fmin, hp, tpe
@@ -21,16 +21,16 @@ np.random.seed(42)
 
 # %%
 # Load the dataset
-df = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_FIS.csv', index_col=0)
+df = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_FIS_all.csv', index_col=0)
 
 # %% [markdown]
 # ### Using MIND to predict Fluid Intelligence Score
 
 # %%
 # rename columns
-datafield_code = ['31-0.0', '21003-2.0']
+datafield_code = ['31-0.0', '21003-2.0', '54-2.0']
 
-datafield_name = ['sex', 'age']
+datafield_name = ['sex', 'age', 'assessment centre']
 
 if len(datafield_code) == len(datafield_name):
     rename_dict = dict(zip(datafield_code, datafield_name))
@@ -65,24 +65,25 @@ numerical_variables = ['age',
         'rh_superiortemporal', 'rh_supramarginal', 'rh_frontalpole', 
         'rh_temporalpole', 'rh_transversetemporal', 'rh_insula']
 
-categorical_variables = []
+categorical_variables = ['assessment centre']
 
 binary_variables = ['sex']
 
 output_variables = ['20016-2.0']
 
 input_variables = list(set(numerical_variables + categorical_variables + binary_variables) - set(output_variables))
+df[categorical_variables] = df[categorical_variables].astype('category')
 
 # %%
 space = {
-    'n_estimators': hp.quniform('n_estimators', 100, 1000, 1),
-    'eta': hp.quniform('eta', 0.025, 0.5, 0.025),
+    'n_estimators': hp.quniform('n_estimators', 100, 1000, 20),
+    'eta': hp.quniform('eta', 0.025, 0.8, 0.025),
     # A problem with max_depth casted to float instead of int with
     # the hp.quniform method.
-    'max_depth': hp.choice('max_depth', np.arange(1, 14, dtype=int)),
+    'max_depth': hp.choice('max_depth', np.arange(1, 10, dtype=int)),
     'min_child_weight': hp.quniform('min_child_weight', 1, 6, 1),
-    'subsample': hp.quniform('subsample', 0.5, 1, 0.05),
-    'gamma': hp.quniform('gamma', 0.5, 1, 0.05),
+    'subsample': hp.quniform('subsample', 0.2, 1, 0.1),
+    'gamma': hp.quniform('gamma', 0, 10, 0.2),
     'colsample_bytree': hp.quniform('colsample_bytree', 0.5, 1, 0.05),
     'eval_metric': 'auc',
     'objective': 'binary:logistic',
@@ -166,7 +167,7 @@ def hyper_parameter_optimization(data_df, input_variables, output_variable, nume
         else:
             space['eval_metric'] = 'auc'
             space['objective'] = 'binary:logistic'
-        normalizer = RobustScaler()
+        normalizer = StandardScaler()
         to_normalize = X_trainval[numeric_vars].values
         X_train[numeric_vars] = normalizer.fit_transform(X_train[numeric_vars])
         X_val[numeric_vars] = normalizer.transform(X_val[numeric_vars])
@@ -183,7 +184,7 @@ def hyper_parameter_optimization(data_df, input_variables, output_variable, nume
 
         columns = X_test.columns
         # print(data_x, data_y, best_hyperparameters, column_names)
-        dir_name = f'/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/best_hyperparameters/{output_variable}/split_{splt_idx}'
+        dir_name = f'/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/hyperparameters/best_hyperparameters_MIND_06-28/{output_variable}/split_{splt_idx}'
         makedirs(dir_name, exist_ok=True)
         column_names = np.array(list(columns))
         np.savez(join(dir_name, 'train_test_data.npz'), x_train=X_trainval, y_train=y_trainval,
