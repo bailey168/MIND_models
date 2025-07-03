@@ -8,7 +8,7 @@ df = pd.read_csv(input_path, index_col=0)
 print("Initial shape of DataFrame:", df.shape)
 
 # Exclude columns with non-continuous data
-exclude_cols = ['31-0.0', '54-2.0']
+exclude_cols = ['31-0.0', '54-2.0', '25741-2.0']
 continuous_cols = [col for col in df.select_dtypes(include=[np.number]).columns
                    if col not in exclude_cols]
 
