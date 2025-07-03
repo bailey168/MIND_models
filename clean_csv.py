@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 # Should I also include ['130895-0.0', '130897-0.0', '130907-0.0', '130911-0.0'] ?
 # exclude = ['130837-0.0', '130839-0.0', '130841-0.0', '130843-0.0',
@@ -30,7 +31,7 @@ import pandas as pd
 exclude = []
 
 # missing thickness data for [bankssts, frontalpole, temporalpole]
-include = ['eid', '31-0.0', '20016-2.0', '21003-2.0', '54-2.0',
+include = ['eid', '31-0.0', '20016-2.0', '21003-2.0', '54-2.0', '25741-2.0',
            
         '27174-2.0', '27267-2.0', '27175-2.0', '27268-2.0', '27176-2.0', '27269-2.0', '27177-2.0',  # CT data
         '27270-2.0', '27178-2.0', '27271-2.0', '27179-2.0', '27272-2.0', '27180-2.0', '27273-2.0',
@@ -42,9 +43,9 @@ include = ['eid', '31-0.0', '20016-2.0', '21003-2.0', '54-2.0',
         '27290-2.0', '27198-2.0', '27291-2.0', '27199-2.0', '27292-2.0', '27200-2.0', '27293-2.0',
         '27201-2.0', '27294-2.0', '27202-2.0', '27295-2.0', '27203-2.0', '27296-2.0']
 
-# input_path = '/Users/baileyng/MIND_models/ukb_tabular2.csv'
 input_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_tabular.csv'
-MIND_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc_avg_unique'
+MIND_avg_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc_avg_unique'
+MIND_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc'
 output_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_FIS.csv'
 
 df = pd.read_csv(input_path, dtype=str)
@@ -65,8 +66,9 @@ df = df[include].copy()
 eids = df['eid'].tolist()
 
 # Read row labels from the first file
-first_matrix_path = f'{MIND_dir}/{eids[0]}_20263_2_0_aparc_MIND_matrix.csv'
+first_matrix_path = f'{MIND_avg_dir}/{eids[0]}_20263_2_0_aparc_MIND_matrix.csv'
 row_labels = pd.read_csv(first_matrix_path, index_col=0, header=None, skiprows=1).index.tolist()
+
 
 # print(row_labels)
 
@@ -75,7 +77,7 @@ matrix_values = pd.DataFrame(index=df.index, columns=row_labels)
 
 # Process all EIDs
 for idx, eid in enumerate(eids):
-    matrix_path = f'{MIND_dir}/{eid}_20263_2_0_aparc_MIND_matrix.csv'
+    matrix_path = f'{MIND_avg_dir}/{eid}_20263_2_0_aparc_MIND_matrix.csv'
     try:
         matrix = pd.read_csv(matrix_path, index_col=0, header=None, skiprows=1)
         matrix_values.iloc[idx] = matrix.iloc[:, 0].values
@@ -83,7 +85,39 @@ for idx, eid in enumerate(eids):
         print(f"Warning: Could not process {eid}: {e}")
         matrix_values.iloc[idx] = [None] * len(row_labels)
 
-df = pd.concat([df.reset_index(drop=True), matrix_values.reset_index(drop=True)], axis=1)
+
+# Grab one matrix to get labels & compute upper‐triangle indices
+first_full = pd.read_csv(f'{MIND_dir}/{eids[0]}_20263_2_0_aparc_MIND_matrix.csv', index_col=0)
+labels = first_full.index.tolist()
+arr0 = first_full.values
+upper_idx = np.triu_indices_from(arr0, k=1)
+
+# build the “regionA-regionB” column names
+upper_col_names = [f'{labels[i]}-{labels[j]}' for i,j in zip(*upper_idx)]
+
+# preallocate a DataFrame for those upper‐triangle values
+upper_df = pd.DataFrame(index=df.index, columns=upper_col_names)
+
+# loop over each eid and pull out M[i,j] for (i,j) in upper_idx
+for row_idx, eid in enumerate(eids):
+    matrix_path = f'{MIND_dir}/{eid}_20263_2_0_aparc_MIND_matrix.csv'
+    try:
+        matrix = pd.read_csv(matrix_path, index_col=0)
+        upper_df.iloc[row_idx] = matrix.values[upper_idx]
+    except Exception as e:
+        print(f"Warning: could not read {eid} full matrix → {e}")
+        upper_df.iloc[row_idx] = [np.nan] * len(upper_col_names)
+
+
+df = pd.concat(
+    [
+        df.reset_index(drop=True), 
+        matrix_values.reset_index(drop=True),
+        upper_df.reset_index(drop=True)
+    ], 
+    axis=1
+)
+
 df = df.dropna()
 
 print(f"Final DataFrame shape: {df.shape}")
