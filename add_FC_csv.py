@@ -1,8 +1,8 @@
 import pandas as pd
 
-input_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_FIS.csv'
+input_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master.csv'
 FC_dir = '/external/rprshnas01/external_data/uk_biobank/imaging/brain/correlation/rFMRI_par_corr_matrix_25'
-output_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_FIS_all.csv'
+output_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master_all.csv'
 col_labels_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/FC_colnames.txt'
 
 df = pd.read_csv(input_path, dtype=str)
@@ -29,7 +29,9 @@ for idx, eid in enumerate(eids):
         matrix_values.iloc[idx] = [None] * len(col_labels)
 
 df = pd.concat([df.reset_index(drop=True), matrix_values.reset_index(drop=True)], axis=1)
-df = df.dropna()
+
+# Only drop rows that are missing FC data (not missing values in other columns)
+df = df.dropna(subset=col_labels)
 
 print(f"Final DataFrame shape: {df.shape}")
 df.to_csv(output_path, index=False)
