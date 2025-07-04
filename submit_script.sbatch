@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-clean_csv_07-04
+#SBATCH --job-name=clean_csv_07-04
 #SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/clean_csv_07-04_%J.out
 #SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/extract_logs/clean_csv_07-04_%J.err
 #SBATCH --time=2:00:00
