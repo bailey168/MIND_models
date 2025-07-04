@@ -31,35 +31,44 @@ import numpy as np
 exclude = []
 
 # missing thickness data for [bankssts, frontalpole, temporalpole]
-include = ['eid', '31-0.0', '20016-2.0', '21003-2.0', '54-2.0', '25741-2.0',
-           
-        '27174-2.0', '27267-2.0', '27175-2.0', '27268-2.0', '27176-2.0', '27269-2.0', '27177-2.0',  # CT data
-        '27270-2.0', '27178-2.0', '27271-2.0', '27179-2.0', '27272-2.0', '27180-2.0', '27273-2.0',
-        '27204-2.0', '27297-2.0', '27181-2.0', '27274-2.0', '27182-2.0', '27275-2.0', '27183-2.0',
-        '27276-2.0', '27184-2.0', '27277-2.0', '27185-2.0', '27278-2.0', '27186-2.0', '27279-2.0',
-        '27188-2.0', '27281-2.0', '27187-2.0', '27280-2.0', '27189-2.0', '27282-2.0', '27190-2.0',
-        '27283-2.0', '27191-2.0', '27284-2.0', '27192-2.0', '27285-2.0', '27193-2.0', '27286-2.0',
-        '27194-2.0', '27287-2.0', '27195-2.0', '27288-2.0', '27196-2.0', '27289-2.0', '27197-2.0',
-        '27290-2.0', '27198-2.0', '27291-2.0', '27199-2.0', '27292-2.0', '27200-2.0', '27293-2.0',
-        '27201-2.0', '27294-2.0', '27202-2.0', '27295-2.0', '27203-2.0', '27296-2.0']
+required_cols = ['eid', '31-0.0', '21003-2.0', '54-2.0', '25741-2.0', 
+                 
+                '27174-2.0', '27267-2.0', '27175-2.0', '27268-2.0', '27176-2.0', '27269-2.0', '27177-2.0', # CT data
+                '27270-2.0', '27178-2.0', '27271-2.0', '27179-2.0', '27272-2.0', '27180-2.0', '27273-2.0',
+                '27204-2.0', '27297-2.0', '27181-2.0', '27274-2.0', '27182-2.0', '27275-2.0', '27183-2.0',
+                '27276-2.0', '27184-2.0', '27277-2.0', '27185-2.0', '27278-2.0', '27186-2.0', '27279-2.0',
+                '27188-2.0', '27281-2.0', '27187-2.0', '27280-2.0', '27189-2.0', '27282-2.0', '27190-2.0',
+                '27283-2.0', '27191-2.0', '27284-2.0', '27192-2.0', '27285-2.0', '27193-2.0', '27286-2.0',
+                '27194-2.0', '27287-2.0', '27195-2.0', '27288-2.0', '27196-2.0', '27289-2.0', '27197-2.0',
+                '27290-2.0', '27198-2.0', '27291-2.0', '27199-2.0', '27292-2.0', '27200-2.0', '27293-2.0',
+                '27201-2.0', '27294-2.0', '27202-2.0', '27295-2.0', '27203-2.0', '27296-2.0']
+
+optional_cols = ['20016-2.0', '20197-2.0', '23324-2.0', '6350-2.0', '6351-2.0'] # Cognitive assessment data
 
 input_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_tabular.csv'
 MIND_avg_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc_avg_unique'
 MIND_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/test_results/aparc'
-output_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_FIS.csv'
+output_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master.csv'
 
 df = pd.read_csv(input_path, dtype=str)
 
 # print(df.shape)
 
 # Remove rows where any exclude column has a value (not empty)
-exclude_cols = df[exclude].apply(lambda x: x.isna() | (x.str.strip() == ''), axis=0)
-df = df[exclude_cols.all(axis=1)]
+if exclude:
+    exclude_cols = df[exclude].apply(lambda x: x.isna() | (x.str.strip() == ''), axis=0)
+    df = df[exclude_cols.all(axis=1)]
 
-# Remove rows where any include column is empty or missing
-include_cols = df[include].apply(lambda x: x.notna() & (x.str.strip() != ''), axis=0)
-df = df[include_cols.all(axis=1)]
-df = df[include].copy()
+# Remove rows where any required column is empty or missing
+required_mask = df[required_cols].apply(lambda x: x.notna() & (x.str.strip() != ''), axis=0)
+df = df[required_mask.all(axis=1)]
+
+# Keep rows that have at least one value in the optional columns
+optional_mask = df[optional_cols].apply(lambda x: x.notna() & (x.str.strip() != ''), axis=0)
+df = df[optional_mask.any(axis=1)]
+
+# Keep only the columns we want
+df = df[required_cols + optional_cols].copy()
 
 # print(df.shape)
 
@@ -69,13 +78,11 @@ eids = df['eid'].tolist()
 first_matrix_path = f'{MIND_avg_dir}/{eids[0]}_20263_2_0_aparc_MIND_matrix.csv'
 row_labels = pd.read_csv(first_matrix_path, index_col=0, header=None, skiprows=1).index.tolist()
 
-
-# print(row_labels)
-
 # Pre-allocate a new DataFrame
 matrix_values = pd.DataFrame(index=df.index, columns=row_labels)
 
-# Process all EIDs
+# Process all EIDs and track which ones failed
+failed_eids = []
 for idx, eid in enumerate(eids):
     matrix_path = f'{MIND_avg_dir}/{eid}_20263_2_0_aparc_MIND_matrix.csv'
     try:
@@ -83,8 +90,8 @@ for idx, eid in enumerate(eids):
         matrix_values.iloc[idx] = matrix.iloc[:, 0].values
     except Exception as e:
         print(f"Warning: Could not process {eid}: {e}")
+        failed_eids.append(idx)
         matrix_values.iloc[idx] = [None] * len(row_labels)
-
 
 # Grab one matrix to get labels & compute upper‐triangle indices
 first_full = pd.read_csv(f'{MIND_dir}/{eids[0]}_20263_2_0_aparc_MIND_matrix.csv', index_col=0)
@@ -92,7 +99,7 @@ labels = first_full.index.tolist()
 arr0 = first_full.values
 upper_idx = np.triu_indices_from(arr0, k=1)
 
-# build the “regionA-regionB” column names
+# build the "regionA-regionB" column names
 upper_col_names = [f'{labels[i]}-{labels[j]}' for i,j in zip(*upper_idx)]
 
 # preallocate a DataFrame for those upper‐triangle values
@@ -106,9 +113,11 @@ for row_idx, eid in enumerate(eids):
         upper_df.iloc[row_idx] = matrix.values[upper_idx]
     except Exception as e:
         print(f"Warning: could not read {eid} full matrix → {e}")
+        if row_idx not in failed_eids:
+            failed_eids.append(row_idx)
         upper_df.iloc[row_idx] = [np.nan] * len(upper_col_names)
 
-
+# Concatenate all data
 df = pd.concat(
     [
         df.reset_index(drop=True), 
@@ -118,7 +127,9 @@ df = pd.concat(
     axis=1
 )
 
-df = df.dropna()
+# Remove rows where MIND matrix data is missing (but keep optional columns with missing values)
+mind_columns = row_labels + upper_col_names
+df = df.dropna(subset=mind_columns)
 
 print(f"Final DataFrame shape: {df.shape}")
 df.to_csv(output_path, index=False)
