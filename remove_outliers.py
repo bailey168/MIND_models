@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 
-input_path = '/Users/baileyng/MIND_data/ukb_FIS_all.csv'
-output_path = '/Users/baileyng/MIND_data/ukb_FIS_all_no_outliers.csv'
+input_path = '/Users/baileyng/MIND_data/ukb_master_allcols.csv'
+output_path = '/Users/baileyng/MIND_data/ukb_master_allcols_no_outliers.csv'
 
 df = pd.read_csv(input_path, index_col=0)
 print("Initial shape of DataFrame:", df.shape)
