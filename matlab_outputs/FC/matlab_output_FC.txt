@@ -14,11 +14,14 @@ Correlations between XS components and Y variables:
 Correlations between age and XS components:
    1.0e-13 *
 
-    0.1193    0.0665    0.0433
+    0.1192    0.0666    0.0432
 
+Maximum correlation between X and Y: 0.0434
+Maximum correlation between X and Y: 0.0476
 Maximum correlation between X and Y: 0.0485
-Starting permutation testing...
+Maximum correlation between X and Y: 0.0342
 
+Starting permutation testing...
 Testing 1 components...
 Component 1: p-value (Y) = 0.0000, p-value (X) = 0.3528
 Testing 2 components...

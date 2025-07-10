@@ -14,7 +14,7 @@ fprintf('Data loaded successfully. Size: %d rows x %d columns\n', height(data), 
 
 % Set X
 % Read region names from file
-regions_file = '/Users/baileyng/MIND_models/region_names/MIND_regions.txt';
+regions_file = '/Users/baileyng/MIND_models/region_names/FC_regions.txt';
 regions = readlines(regions_file);
 regions = regions(regions ~= ""); % Remove empty lines
 
@@ -42,24 +42,30 @@ sex = data.('31-0.0');
 assessment_center = data.('54-2.0');
 head_motion = data.('25741-2.0');
 
-% Regress out covariates from Y columns
-mdl = fitlm(table(age, sex, assessment_center, Y(:,1))); Y(:,1) = mdl.Residuals.Raw;
-mdl = fitlm(table(age, sex, assessment_center, Y(:,2))); Y(:,2) = mdl.Residuals.Raw;
-mdl = fitlm(table(age, sex, assessment_center, Y(:,3))); Y(:,3) = mdl.Residuals.Raw;
-mdl = fitlm(table(age, sex, assessment_center, Y(:,4))); Y(:,4) = mdl.Residuals.Raw;
+% Regress out covariates from Y columns - VECTORIZED VERSION
+Y_covariates = [age, sex, assessment_center];
+
+% Create design matrix for Y regression
+Y_design_matrix = [ones(size(Y_covariates,1),1), Y_covariates]; % Add intercept
+
+% Vectorized regression for all Y columns at once
+Y_beta_coeffs = Y_design_matrix \ Y; % Solve for all columns simultaneously
+Y_predicted = Y_design_matrix * Y_beta_coeffs;
+Y = Y - Y_predicted; % Residuals
 
 % Regress out covariates from X columns - VECTORIZED VERSION
-covariates = [age, sex, assessment_center, head_motion];
+X_covariates = [age, sex, assessment_center, head_motion];
+% X_covariates = [age, sex, assessment_center];
 
 % Create design matrix once
-design_matrix = [ones(size(covariates,1),1), covariates]; % Add intercept
+X_design_matrix = [ones(size(X_covariates,1),1), X_covariates]; % Add intercept
 
 % Vectorized regression for all X columns at once
-beta_coeffs = design_matrix \ X; % Solve for all columns simultaneously
-X_predicted = design_matrix * beta_coeffs;
+X_beta_coeffs = X_design_matrix \ X; % Solve for all columns simultaneously
+X_predicted = X_design_matrix * X_beta_coeffs;
 X = X - X_predicted; % Residuals
 
-clear X_corrected design_matrix beta_coeffs X_predicted;
+clear Y_design_matrix Y_beta_coeffs Y_predicted X_design_matrix X_beta_coeffs X_predicted;
 
 [XL, YL, XS, YS, BETA, PCTVAR, MSE, stats] = plsregress(X, Y, ncomp); PCTVAR
 
@@ -130,7 +136,7 @@ fprintf('Correlations between age and XS components:\n');
 disp(age_XS_corr);
 
 % Find maximum correlation between X and Y
-max_corr_XY = max(max(corr(X, Y)));
+max_corr_XY = max(corr(X, Y));
 fprintf('Maximum correlation between X and Y: %.4f\n', max_corr_XY);
 
 %% Permutation testing
