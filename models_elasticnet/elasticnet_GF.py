@@ -97,6 +97,7 @@ def elasticnet_analysis(X, y, continuous_vars, categorical_vars, n_splits=10):
 
 # %%
 # Load the dataset
+print("Loading dataset...")
 df = pd.read_csv('/scratch/bng/cartbind/data/ukb_master_GF_no_outliers.csv', index_col=0)
 
 # %% [markdown]
@@ -127,6 +128,7 @@ categorical_vars = ['sex', 'assessment_centre']
 continuous_vars  = [c for c in X.columns if c not in categorical_vars]
 
 # %%
+print('Starting elastic net analysis...')
 elasticnet_analysis(X, y, continuous_vars, categorical_vars, n_splits=10)
 
 
