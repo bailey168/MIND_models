@@ -6,7 +6,7 @@
 #SBATCH --mem-per-cpu=10G
 #SBATCH --cpus-per-task=3
 #SBATCH --array=0
-#SBATCH --partition=low-moby
+#SBATCH --partition=high-moby
 
 module load python/3.8.1
 module load python/3.8.1
