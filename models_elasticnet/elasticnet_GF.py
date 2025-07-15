@@ -17,7 +17,7 @@ random.seed(42)
 np.random.seed(42)
 
 # %%
-rename = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/col_renames.csv')
+rename = pd.read_csv('/scratch/bng/cartbind/code/MIND_models/region_names/col_renames.csv')
 rename_dict = dict(zip(rename['datafield_code'], rename['datafield_name']))
 
 # %% [markdown]
@@ -104,7 +104,7 @@ df = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_mas
 
 # %%
 # Set X and y
-with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/MIND_regions.txt', 'r') as f:
+with open('/scratch/bng/cartbind/code/MIND_models/region_names/MIND_regions.txt', 'r') as f:
     brain_regions = [line.strip() for line in f.readlines()]
 
 # Define demographic/clinical features
