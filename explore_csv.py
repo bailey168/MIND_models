@@ -30,12 +30,13 @@ print(f"Number of rows with values in ALL columns: {count_all}")
 
 
 # Create a separate DataFrame with rows that have values in all three trailmaking columns
-trailmaking_cols = ['20016-2.0', '20197-2.0', '23324-2.0', '6350-2.0', '6351-2.0']
+# trailmaking_cols = ['20016-2.0', '20197-2.0', '23324-2.0', '6350-2.0', '6351-2.0']
+trailmaking_cols = ['20197-2.0']
 trailmaking_df = df[df[trailmaking_cols].notna().all(axis=1)].copy()
 
 print(f"Number of rows with values in all trailmaking columns: {len(trailmaking_df)}")
 print(f"Original DataFrame shape: {df.shape}")
 print(f"Trailmaking DataFrame shape: {trailmaking_df.shape}")
 
-trailmaking_df.to_csv('/Users/baileyng/MIND_data/ukb_master_allcols.csv')
+trailmaking_df.to_csv('/Users/baileyng/MIND_data/ukb_master_PAL.csv')
 print("Trailmaking DataFrame saved.")

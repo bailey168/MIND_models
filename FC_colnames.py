@@ -6,8 +6,8 @@ from itertools import product
 ICs = [f'IC{i}' for i in range(1, 22)]  # ['IC1', ..., 'IC21']
 D = len(ICs)
 
-# Step 2: Generate all combinations: 'ICj' + 'ICi'
-combs = [j + i for j, i in product(ICs, ICs)]  # same as combs{i,2} + combs{i,1}
+# Step 2: Generate all combinations: 'ICj' + 'ICi' 
+combs = [i + '-' + j for j, i in product(ICs, ICs)]  # Now matches combs{i,2} + combs{i,1}
 
 # Step 3: Reshape to 21 x 21 matrix
 ICs_matrix = np.array(combs).reshape(D, D)
@@ -23,6 +23,6 @@ column_names = df.columns.tolist()
 
 print(column_names)
 
-# with open('/Users/baileyng/MIND_models/FC_colnames.txt', 'w') as f:
-#     for col in column_names:
-#         f.write(f"{col}\n")
+with open('/Users/baileyng/MIND_models/FC_colnames.txt', 'w') as f:
+    for col in column_names:
+        f.write(f"{col}\n")
