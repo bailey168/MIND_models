@@ -97,7 +97,7 @@ def elasticnet_analysis(X, y, continuous_vars, categorical_vars, n_splits=10):
 
 # %%
 # Load the dataset
-df = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master_GF_no_outliers.csv', index_col=0)
+df = pd.read_csv('/scratch/bng/cartbind/data/ukb_master_GF_no_outliers.csv', index_col=0)
 
 # %% [markdown]
 # ## GF vs. MIND
