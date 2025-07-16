@@ -14,7 +14,7 @@ fprintf('Data loaded successfully. Size: %d rows x %d columns\n', height(data), 
 
 % Set X
 % Read region names from file
-regions_file = '/Users/baileyng/MIND_models/region_names/MIND_regions.txt';
+regions_file = '/Users/baileyng/MIND_models/region_names/MIND_avg_regions.txt';
 regions = readlines(regions_file);
 regions = regions(regions ~= ""); % Remove empty lines
 
