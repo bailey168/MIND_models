@@ -36,12 +36,12 @@ cols = ['eid', '20127-0.0',
         '131115-0.0', '131117-0.0', '131119-0.0', '131121-0.0', '131123-0.0', '131125-0.0',
         '131127-0.0']
 
-with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/aparc_base_id.txt') as f:
+with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/NEO/FC_base_id.txt') as f:
     id_set = set(line.strip() for line in f)
 
 df = pd.read_csv('/external/rprshnas01/external_data/uk_biobank/tabular_data_csv/ukb51007.csv', usecols=cols, dtype=str)
 filtered_df = df[df['eid'].astype(str).isin(id_set)]
-filtered_df.to_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_tabular.csv')
+filtered_df.to_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/NEO_tabular.csv')
 
 print(filtered_df.shape)
-print("Filtered DataFrame saved to 'ukb_tabular.csv'.")
+print("Filtered DataFrame saved to 'NEO_tabular.csv'.")
