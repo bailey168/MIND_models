@@ -11,8 +11,11 @@ from sklearn.linear_model import ElasticNetCV
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import random
+import time
 
 # %%
+start = time.time()
+
 random.seed(42)
 np.random.seed(42)
 
@@ -130,5 +133,7 @@ continuous_vars  = [c for c in X.columns if c not in categorical_vars]
 # %%
 print('Starting elastic net analysis...')
 elasticnet_analysis(X, y, continuous_vars, categorical_vars, n_splits=10)
+
+print(f'\nTotal time taken: {time.time() - start:.2f} seconds')
 
 
