@@ -13,4 +13,5 @@ module load python/3.8.1
 
 source /scratch/bng/cartbind/data/darwin/bin/activate
 
+echo "Starting elastic net analysis..."
 python3 /scratch/bng/cartbind/code/MIND_models/models_elasticnet/elasticnet_GF.py

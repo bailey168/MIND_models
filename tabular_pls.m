@@ -14,7 +14,7 @@ fprintf('Data loaded successfully. Size: %d rows x %d columns\n', height(data), 
 
 % Set X
 % Read region names from file
-regions_file = '/Users/baileyng/MIND_models/region_names/FC_regions.txt';
+regions_file = '/Users/baileyng/MIND_models/region_names/MIND_regions.txt';
 regions = readlines(regions_file);
 regions = regions(regions ~= ""); % Remove empty lines
 
@@ -54,8 +54,8 @@ Y_predicted = Y_design_matrix * Y_beta_coeffs;
 Y = Y - Y_predicted; % Residuals
 
 % Regress out covariates from X columns - VECTORIZED VERSION
-X_covariates = [age, sex, assessment_center, head_motion];
-% X_covariates = [age, sex, assessment_center];
+% X_covariates = [age, sex, assessment_center, head_motion];
+X_covariates = [age, sex, assessment_center];
 
 % Create design matrix once
 X_design_matrix = [ones(size(X_covariates,1),1), X_covariates]; % Add intercept
@@ -309,7 +309,7 @@ Weights(Weights < upperlim & Weights > lowerlim) = 0; % Threshold weights
 % Create figure
 figure;
 
-% Plot positive weights (blue)
+% Plot positive weights (red)
 Weights_pos = Weights;
 Weights_pos(Weights_pos < 0) = 0;
 if any(Weights_pos > 0)
@@ -321,13 +321,13 @@ if any(Weights_pos > 0)
     end
     
     myColorMap_pos = zeros(D, 3);
-    myColorMap_pos(:, 3) = 1; % Blue for positive
+    myColorMap_pos(:, 1) = 1; % Red for positive
     circularGraph(Weights_square_pos, 'Colormap', myColorMap_pos, 'Label', unique_networks);
 end
 
 hold on;
 
-% Plot negative weights (red)
+% Plot negative weights (blue)
 Weights_neg = Weights;
 Weights_neg(Weights_neg > 0) = 0;
 if any(Weights_neg < 0)
@@ -339,12 +339,12 @@ if any(Weights_neg < 0)
     end
     
     myColorMap_neg = zeros(D, 3);
-    myColorMap_neg(:, 1) = 1; % Red for negative
+    myColorMap_neg(:, 3) = 1; % Blue for negative
     circularGraph(Weights_square_neg, 'Colormap', myColorMap_neg, 'Label', unique_networks);
 end
 
 title('PLS Component 1 - Functional Connectivity Weights');
-fprintf('Visualization complete. Positive weights in blue, negative weights in red.\n');
+fprintf('Visualization complete. Positive weights in red, negative weights in blue.\n');
 
 % Display summary statistics
 fprintf('Significant positive weights (>%d): %d\n', upperlim, sum(plsweights1 > upperlim));
