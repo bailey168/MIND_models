@@ -54,7 +54,7 @@ def elasticnet_analysis(X, y, continuous_vars, categorical_vars, n_splits=10):
             ElasticNetCV(
                 l1_ratio=np.linspace(0.3,0.9,7),
                 alphas=np.logspace(-4,1,11),
-                cv=10, max_iter=30000, random_state=42,
+                cv=10, max_iter=40000, random_state=42,
                 n_jobs=-1
             )
         )
