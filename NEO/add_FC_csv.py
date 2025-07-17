@@ -1,8 +1,8 @@
 import pandas as pd
 
-input_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master.csv'
+input_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/NEO_tabular.csv'
 FC_dir = '/external/rprshnas01/external_data/uk_biobank/imaging/brain/correlation/rFMRI_par_corr_matrix_25'
-output_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master_all.csv'
+output_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/NEO_tabular_all.csv'
 col_labels_path = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/FC_colnames.txt'
 
 df = pd.read_csv(input_path, dtype=str)

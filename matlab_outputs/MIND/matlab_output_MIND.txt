@@ -1,50 +1,51 @@
-X matrix created with 24143 rows x 2278 columns
-Y matrix created with 24143 rows x 4 columns
+Data loaded successfully. Size: 23188 rows x 2629 columns
+X matrix created with 23188 rows x 2278 columns
+Y matrix created with 23188 rows x 4 columns
 
 PCTVAR =
 
-    0.0516    0.0529    0.0201
-    0.0097    0.0037    0.0040
+    0.0520    0.0521    0.0203
+    0.0103    0.0041    0.0043
 
 Correlations between XS components and Y variables:
-   -0.0841   -0.1447   -0.0533   -0.0846
-    0.0430    0.0409    0.0644    0.0878
-    0.0360    0.0988    0.0616    0.0206
+   -0.1106   -0.1405   -0.0461   -0.0794
+    0.0605    0.0398    0.0644    0.0860
+    0.0529    0.0979    0.0608    0.0177
 
 Correlations between age and XS components:
    1.0e-13 *
 
-    0.4865   -0.4504    0.1597
+    0.1429   -0.0655   -0.0633
 
-Maximum correlation between X and Y: 0.0487
-Maximum correlation between X and Y: 0.0813
-Maximum correlation between X and Y: 0.0365
-Maximum correlation between X and Y: 0.0525
+Maximum correlation between X and Y: 0.0598
+Maximum correlation between X and Y: 0.0785
+Maximum correlation between X and Y: 0.0341
+Maximum correlation between X and Y: 0.0480
 
 Starting permutation testing...
 Testing 1 components...
-Component 1: p-value (Y) = 0.0000, p-value (X) = 0.2064
+Component 1: p-value (Y) = 0.0000, p-value (X) = 0.1698
 Testing 2 components...
 Component 2: p-value (Y) = 0.0000, p-value (X) = 0.0000
 Testing 3 components...
-Component 3: p-value (Y) = 0.0000, p-value (X) = 0.0002
+Component 3: p-value (Y) = 0.0000, p-value (X) = 0.0000
 
-Actual R-squared: 0.0174
+Actual R-squared: 0.0187
 
 Starting bootstrapping analysis...
 Running 5000 bootstrap iterations...
 Calculating bootstrap statistics...
-PLS1 weights > 3: 166
-PLS1 weights < -3: 1121
-PLS2 weights > 3: 105
-PLS2 weights < -3: 642
-PLS3 weights > 3: 186
-PLS3 weights < -3: 235
+PLS1 weights > 3: 152
+PLS1 weights < -3: 1102
+PLS2 weights > 3: 106
+PLS2 weights < -3: 615
+PLS3 weights > 3: 173
+PLS3 weights < -3: 220
 
 Creating circular graph visualization...
 Number of unique networks detected: 68
 
-Visualization complete. Positive weights in blue, negative weights in red.
-Significant positive weights (>4): 71
-Significant negative weights (<-4): 914
-Elapsed time is 6381.799486 seconds.
+Visualization complete. Positive weights in red, negative weights in blue.
+Significant positive weights (>4): 55
+Significant negative weights (<-4): 890
+Elapsed time is 7917.878449 seconds.
