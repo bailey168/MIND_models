@@ -1,0 +1,51 @@
+Data loaded successfully. Size: 23188 rows x 2629 columns
+X matrix created with 23188 rows x 62 columns
+Y matrix created with 23188 rows x 4 columns
+
+PCTVAR =
+
+    0.3397    0.0734    0.0356
+    0.0012    0.0035    0.0018
+
+Correlations between XS components and Y variables:
+    0.0336    0.0437    0.0339    0.0221
+    0.0703    0.0543    0.0416    0.0668
+   -0.0193   -0.0758   -0.0187    0.0174
+
+Correlations between age and XS components:
+   1.0e-13 *
+
+   -0.3388   -0.0025   -0.0322
+
+Maximum correlation between X and Y: 0.0371
+Maximum correlation between X and Y: 0.0444
+Maximum correlation between X and Y: 0.0455
+Maximum correlation between X and Y: 0.0296
+
+Starting permutation testing...
+Testing 1 components...
+Component 1: p-value (Y) = 0.0000, p-value (X) = 0.6866
+Testing 2 components...
+Component 2: p-value (Y) = 0.0000, p-value (X) = 0.3286
+Testing 3 components...
+Component 3: p-value (Y) = 0.0000, p-value (X) = 0.5388
+
+Actual R-squared: 0.0065
+
+Starting bootstrapping analysis...
+Running 5000 bootstrap iterations...
+Calculating bootstrap statistics...
+PLS1 weights > 3: 24
+PLS1 weights < -3: 0
+PLS2 weights > 3: 8
+PLS2 weights < -3: 11
+PLS3 weights > 3: 9
+PLS3 weights < -3: 3
+
+Creating circular graph visualization...
+Number of unique networks detected: 63
+
+Visualization complete. Positive weights in red, negative weights in blue.
+Significant positive weights (>4): 11
+Significant negative weights (<-4): 0
+Elapsed time is 165.102892 seconds.
