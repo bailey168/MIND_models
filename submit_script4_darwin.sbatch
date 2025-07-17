@@ -3,8 +3,8 @@
 #SBATCH --output=/scratch/bng/cartbind/data/logs/elasticnet_logs/elasticnet_TMT_07-16_%J.out
 #SBATCH --error=/scratch/bng/cartbind/data/logs/elasticnet_logs/elasticnet_TMT_07-16_%J.err
 #SBATCH --time=32:00:00
-#SBATCH --mem-per-cpu=6G
-#SBATCH --cpus-per-task=4
+#SBATCH --mem-per-cpu=4G
+#SBATCH --cpus-per-task=12
 #SBATCH --array=0
 #SBATCH --partition=low-moby
 
