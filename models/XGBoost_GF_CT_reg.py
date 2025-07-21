@@ -21,16 +21,43 @@ np.random.seed(42)
 
 # %%
 # Load the dataset
-df = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_FIS_all_no_outliers.csv', index_col=0)
+df = pd.read_csv('/scratch/bng/cartbind/data/ukb_master_GF_no_outliers.csv', index_col=0)
 
 # %% [markdown]
-# ### Using MIND to predict Fluid Intelligence Score
+# ### Using CT to predict Fluid Intelligence Score
 
 # %%
 # rename columns
-datafield_code = ['31-0.0', '21003-2.0', '54-2.0']
+datafield_code = ['31-0.0', '21003-2.0', '54-2.0',
+    
+        '27174-2.0', '27267-2.0', '27175-2.0', '27268-2.0', '27176-2.0', '27269-2.0', '27177-2.0',
+        '27270-2.0', '27178-2.0', '27271-2.0', '27179-2.0', '27272-2.0', '27180-2.0', '27273-2.0',
+        '27204-2.0', '27297-2.0', '27181-2.0', '27274-2.0', '27182-2.0', '27275-2.0', '27183-2.0',
+        '27276-2.0', '27184-2.0', '27277-2.0', '27185-2.0', '27278-2.0', '27186-2.0', '27279-2.0',
+        '27188-2.0', '27281-2.0', '27187-2.0', '27280-2.0', '27189-2.0', '27282-2.0', '27190-2.0',
+        '27283-2.0', '27191-2.0', '27284-2.0', '27192-2.0', '27285-2.0', '27193-2.0', '27286-2.0',
+        '27194-2.0', '27287-2.0', '27195-2.0', '27288-2.0', '27196-2.0', '27289-2.0', '27197-2.0',
+        '27290-2.0', '27198-2.0', '27291-2.0', '27199-2.0', '27292-2.0', '27200-2.0', '27293-2.0',
+        '27201-2.0', '27294-2.0', '27202-2.0', '27295-2.0', '27203-2.0', '27296-2.0']
 
-datafield_name = ['sex', 'age', 'assessment centre']
+datafield_name = ['sex', 'age', 'assessment centre',
+    
+        'lh_caudalanteriorcingulate_thickness', 'rh_caudalanteriorcingulate_thickness', 'lh_caudalmiddlefrontal_thickness',
+        'rh_caudalmiddlefrontal_thickness', 'lh_cuneus_thickness', 'rh_cuneus_thickness', 'lh_entorhinal_thickness', 
+        'rh_entorhinal_thickness', 'lh_fusiform_thickness', 'rh_fusiform_thickness', 'lh_inferiorparietal_thickness', 
+        'rh_inferiorparietal_thickness', 'lh_inferiortemporal_thickness', 'rh_inferiortemporal_thickness', 'lh_insula_thickness', 
+        'rh_insula_thickness', 'lh_isthmuscingulate_thickness', 'rh_isthmuscingulate_thickness', 'lh_lateraloccipital_thickness', 
+        'rh_lateraloccipital_thickness', 'lh_lateralorbitofrontal_thickness', 'rh_lateralorbitofrontal_thickness', 
+        'lh_lingual_thickness', 'rh_lingual_thickness', 'lh_medialorbitofrontal_thickness', 'rh_medialorbitofrontal_thickness', 
+        'lh_middletemporal_thickness', 'rh_middletemporal_thickness', 'lh_paracentral_thickness', 'rh_paracentral_thickness', 
+        'lh_parahippocampal_thickness', 'rh_parahippocampal_thickness', 'lh_parsopercularis_thickness', 'rh_parsopercularis_thickness', 
+        'lh_parsorbitalis_thickness', 'rh_parsorbitalis_thickness', 'lh_parstriangularis_thickness', 'rh_parstriangularis_thickness', 
+        'lh_pericalcarine_thickness', 'rh_pericalcarine_thickness', 'lh_postcentral_thickness', 'rh_postcentral_thickness', 
+        'lh_posteriorcingulate_thickness', 'rh_posteriorcingulate_thickness', 'lh_precentral_thickness', 'rh_precentral_thickness', 
+        'lh_precuneus_thickness', 'rh_precuneus_thickness', 'lh_rostralanteriorcingulate_thickness', 'rh_rostralanteriorcingulate_thickness', 
+        'lh_rostralmiddlefrontal_thickness', 'rh_rostralmiddlefrontal_thickness', 'lh_superiorfrontal_thickness', 'rh_superiorfrontal_thickness', 
+        'lh_superiorparietal_thickness', 'rh_superiorparietal_thickness', 'lh_superiortemporal_thickness', 'rh_superiortemporal_thickness', 
+        'lh_supramarginal_thickness', 'rh_supramarginal_thickness', 'lh_transversetemporal_thickness', 'rh_transversetemporal_thickness']
 
 if len(datafield_code) == len(datafield_name):
     rename_dict = dict(zip(datafield_code, datafield_name))
@@ -42,28 +69,22 @@ else:
 # %%
 numerical_variables = ['age',
                        
-        'lh_bankssts', 'lh_caudalanteriorcingulate', 'lh_caudalmiddlefrontal',
-        'lh_cuneus', 'lh_entorhinal', 'lh_fusiform', 'lh_inferiorparietal', 
-        'lh_inferiortemporal', 'lh_isthmuscingulate', 'lh_lateraloccipital', 
-        'lh_lateralorbitofrontal', 'lh_lingual', 'lh_medialorbitofrontal', 
-        'lh_middletemporal', 'lh_parahippocampal', 'lh_paracentral', 
-        'lh_parsopercularis', 'lh_parsorbitalis', 'lh_parstriangularis', 
-        'lh_pericalcarine', 'lh_postcentral', 'lh_posteriorcingulate', 
-        'lh_precentral', 'lh_precuneus', 'lh_rostralanteriorcingulate', 
-        'lh_rostralmiddlefrontal', 'lh_superiorfrontal', 'lh_superiorparietal', 
-        'lh_superiortemporal', 'lh_supramarginal', 'lh_frontalpole', 
-        'lh_temporalpole', 'lh_transversetemporal', 'lh_insula', 
-        'rh_bankssts', 'rh_caudalanteriorcingulate', 'rh_caudalmiddlefrontal', 
-        'rh_cuneus', 'rh_entorhinal', 'rh_fusiform', 'rh_inferiorparietal', 
-        'rh_inferiortemporal', 'rh_isthmuscingulate', 'rh_lateraloccipital', 
-        'rh_lateralorbitofrontal', 'rh_lingual', 'rh_medialorbitofrontal', 
-        'rh_middletemporal', 'rh_parahippocampal', 'rh_paracentral', 
-        'rh_parsopercularis', 'rh_parsorbitalis', 'rh_parstriangularis', 
-        'rh_pericalcarine', 'rh_postcentral', 'rh_posteriorcingulate', 
-        'rh_precentral', 'rh_precuneus', 'rh_rostralanteriorcingulate', 
-        'rh_rostralmiddlefrontal', 'rh_superiorfrontal', 'rh_superiorparietal', 
-        'rh_superiortemporal', 'rh_supramarginal', 'rh_frontalpole', 
-        'rh_temporalpole', 'rh_transversetemporal', 'rh_insula']
+        'lh_caudalanteriorcingulate_thickness', 'rh_caudalanteriorcingulate_thickness', 'lh_caudalmiddlefrontal_thickness',
+        'rh_caudalmiddlefrontal_thickness', 'lh_cuneus_thickness', 'rh_cuneus_thickness', 'lh_entorhinal_thickness', 
+        'rh_entorhinal_thickness', 'lh_fusiform_thickness', 'rh_fusiform_thickness', 'lh_inferiorparietal_thickness', 
+        'rh_inferiorparietal_thickness', 'lh_inferiortemporal_thickness', 'rh_inferiortemporal_thickness', 'lh_insula_thickness', 
+        'rh_insula_thickness', 'lh_isthmuscingulate_thickness', 'rh_isthmuscingulate_thickness', 'lh_lateraloccipital_thickness', 
+        'rh_lateraloccipital_thickness', 'lh_lateralorbitofrontal_thickness', 'rh_lateralorbitofrontal_thickness', 
+        'lh_lingual_thickness', 'rh_lingual_thickness', 'lh_medialorbitofrontal_thickness', 'rh_medialorbitofrontal_thickness', 
+        'lh_middletemporal_thickness', 'rh_middletemporal_thickness', 'lh_paracentral_thickness', 'rh_paracentral_thickness', 
+        'lh_parahippocampal_thickness', 'rh_parahippocampal_thickness', 'lh_parsopercularis_thickness', 'rh_parsopercularis_thickness', 
+        'lh_parsorbitalis_thickness', 'rh_parsorbitalis_thickness', 'lh_parstriangularis_thickness', 'rh_parstriangularis_thickness', 
+        'lh_pericalcarine_thickness', 'rh_pericalcarine_thickness', 'lh_postcentral_thickness', 'rh_postcentral_thickness', 
+        'lh_posteriorcingulate_thickness', 'rh_posteriorcingulate_thickness', 'lh_precentral_thickness', 'rh_precentral_thickness', 
+        'lh_precuneus_thickness', 'rh_precuneus_thickness', 'lh_rostralanteriorcingulate_thickness', 'rh_rostralanteriorcingulate_thickness', 
+        'lh_rostralmiddlefrontal_thickness', 'rh_rostralmiddlefrontal_thickness', 'lh_superiorfrontal_thickness', 'rh_superiorfrontal_thickness', 
+        'lh_superiorparietal_thickness', 'rh_superiorparietal_thickness', 'lh_superiortemporal_thickness', 'rh_superiortemporal_thickness', 
+        'lh_supramarginal_thickness', 'rh_supramarginal_thickness', 'lh_transversetemporal_thickness', 'rh_transversetemporal_thickness']
 
 categorical_variables = ['assessment centre']
 
@@ -75,6 +96,9 @@ input_variables = list(set(numerical_variables + categorical_variables + binary_
 df[categorical_variables] = df[categorical_variables].astype('category')
 
 # %%
+lambda_values = np.logspace(-4, 4, num=17)
+alpha_values = np.logspace(-4, 4, num=17)
+
 space = {
     'n_estimators': hp.quniform('n_estimators', 100, 1000, 20),
     'eta': hp.quniform('eta', 0.025, 0.8, 0.025),
@@ -85,8 +109,8 @@ space = {
     'subsample': hp.quniform('subsample', 0.2, 1, 0.1),
     'gamma': hp.quniform('gamma', 0, 10, 0.2),
     'colsample_bytree': hp.quniform('colsample_bytree', 0.5, 1, 0.05),
-    'lambda': hp.loguniform('lambda', np.log(1e-4), np.log(1e4)),  # L2 regularization
-    'alpha': hp.loguniform('alpha', np.log(1e-4), np.log(1e4)),    # L1 regularization
+    'lambda': hp.choice('lambda', lambda_values.tolist()),  # L2 regularization
+    'alpha': hp.choice('alpha', alpha_values.tolist()),    # L1 regularization
     'eval_metric': 'auc',
     'objective': 'binary:logistic',
     # Increase this number if you have more cores. Otherwise, remove it and it will default
@@ -186,7 +210,7 @@ def hyper_parameter_optimization(data_df, input_variables, output_variable, nume
 
         columns = X_test.columns
         # print(data_x, data_y, best_hyperparameters, column_names)
-        dir_name = f'/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/hyperparameters/best_hyperparameters_MIND_reg_06-30/{output_variable}/split_{splt_idx}'
+        dir_name = f'/scratch/bng/cartbind/data/hyperparameters/best_hyperparameters_CT_reg_07-20/{output_variable}/split_{splt_idx}'
         makedirs(dir_name, exist_ok=True)
         column_names = np.array(list(columns))
         np.savez(join(dir_name, 'train_test_data.npz'), x_train=X_trainval, y_train=y_trainval,
