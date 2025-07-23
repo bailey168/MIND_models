@@ -214,6 +214,10 @@ print("Starting hyperparameter optimization...")
 
 for i, region in enumerate(regions):
     region_name = region_names[i]
+
+    if region_name == 'MIND_avg_regions':
+        continue
+
     print(f"\n{'='*60}")
     print(f"Processing region: {region_name}")
     print(f"Number of features in region: {len(region)}")

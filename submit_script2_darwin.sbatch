@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=XGBoost_PAL_reg_07-21
-#SBATCH --output=/scratch/bng/cartbind/data/logs/xgboost_reg_logs/XGBoost_PAL_reg_07-21_%J.out
-#SBATCH --error=/scratch/bng/cartbind/data/logs/xgboost_reg_logs/XGBoost_PAL_reg_07-21_%J.err
+#SBATCH --job-name=XGBoost_PAL_reg_07-23
+#SBATCH --output=/scratch/bng/cartbind/data/logs/xgboost_reg_logs/XGBoost_PAL_reg_07-23_%J.out
+#SBATCH --error=/scratch/bng/cartbind/data/logs/xgboost_reg_logs/XGBoost_PAL_reg_07-23_%J.err
 #SBATCH --time=32:00:00
 #SBATCH --mem-per-cpu=6G
 #SBATCH --cpus-per-task=4
