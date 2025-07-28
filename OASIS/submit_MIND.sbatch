@@ -4,12 +4,12 @@
 #SBATCH --error=/scratch/p/pz249/baileyng/logs/MIND_processing_%J.err
 #SBATCH --time=00:15:00
 #SBATCH --cpus-per-task=1
-#SBATCH --array=0-1035
+#SBATCH --array=0-999
 
 module load python/3.8.5
 source /home/p/pz249/baileyng/mind_env/bin/activate
 
-PATHS_FILE=/home/p/pz249/baileyng/MIND_models/OASIS/aparc_paths.loc
+PATHS_FILE=/home/p/pz249/baileyng/MIND_models/OASIS/aparc_paths1.loc
 OUTPUT_DIR=/scratch/p/pz249/baileyng/data/MIND_results/full
 PARCELLATION=aparc
 
