@@ -1,9 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=MIND_processing
-#SBATCH --output=/home/p/pz249/baileyng/logs/MIND_processing_%J.out
-#SBATCH --error=/home/p/pz249/baileyng/logs/MIND_processing_%J.err
+#SBATCH --output=/scratch/p/pz249/baileyng/logs/MIND_processing_%J.out
+#SBATCH --error=/scratch/p/pz249/baileyng/logs/MIND_processing_%J.err
 #SBATCH --time=00:15:00
-#SBATCH --mem-per-cpu=600M
 #SBATCH --cpus-per-task=1
 #SBATCH --array=0-1035
 
@@ -11,7 +10,7 @@ module load python/3.8.5
 source /home/p/pz249/baileyng/mind_env/bin/activate
 
 PATHS_FILE=/home/p/pz249/baileyng/MIND_models/OASIS/aparc_paths.loc
-OUTPUT_DIR=/home/p/pz249/baileyng/data/MIND_results/full
+OUTPUT_DIR=/scratch/p/pz249/baileyng/data/MIND_results/full
 PARCELLATION=aparc
 
 mapfile -s $SLURM_ARRAY_TASK_ID \
