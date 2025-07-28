@@ -16,4 +16,4 @@ PARCELLATION=aparc
 mapfile -s $SLURM_ARRAY_TASK_ID \
     -t -n1 SUBJECT < "$PATHS_FILE"
 
-python3 /home/p/pz249/baileyng/MIND_models/run_MIND_script.py --subj_dir "${SUBJECT[0]}" --output_dir "$OUTPUT_DIR" --parcellation "$PARCELLATION"
+python3 /home/p/pz249/baileyng/MIND_models/MIND/run_MIND_script.py --subj_dir "${SUBJECT[0]}" --output_dir "$OUTPUT_DIR" --parcellation "$PARCELLATION"
