@@ -4,6 +4,7 @@
 #SBATCH --error=/scratch/p/pz249/baileyng/logs/MIND_processing_%J.err
 #SBATCH --time=00:15:00
 #SBATCH --cpus-per-task=1
+#SBATCH --nodes=1
 #SBATCH --array=0-999
 
 module load python/3.8.5
