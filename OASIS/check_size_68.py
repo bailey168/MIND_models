@@ -2,7 +2,7 @@ import pandas as pd
 import glob
 import os
 
-input_dir = '/scratch/p/pz249/baileyng/data/MIND_results/avg'
+input_dir = '/scratch/p/pz249/baileyng/data/MIND_results/full'
 
 for csv_file in glob.glob(os.path.join(input_dir, '*_MIND_matrix.csv')):
     df_matrix = pd.read_csv(csv_file, index_col=0)
