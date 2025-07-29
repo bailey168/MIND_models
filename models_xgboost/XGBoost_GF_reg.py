@@ -215,7 +215,7 @@ print("Starting hyperparameter optimization...")
 for i, region in enumerate(regions):
     region_name = region_names[i]
 
-    if region_name == 'MIND_avg_regions':
+    if region_name == 'MIND_avg_regions' or region_name == 'MIND_regions':
         continue
 
     print(f"\n{'='*60}")
@@ -227,8 +227,8 @@ for i, region in enumerate(regions):
     numerical_vars = base_numerical_vars + region
 
     if region_name == 'FC_regions':
-        input_vars = input_vars + ['25741-2.0']
-        numerical_vars = numerical_vars + ['25741-2.0']
+        input_vars = input_vars + ['head_motion']
+        numerical_vars = numerical_vars + ['head_motion']
 
     region_start = time.time()
 
