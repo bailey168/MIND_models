@@ -42,7 +42,7 @@ plt.figure(figsize=(8, 8))
 sns.heatmap(df, cmap="viridis", square=True, xticklabels=1, yticklabels=1)
 plt.title("MIND Matrix Heatmap")
 plt.xlabel("Region")
-plt.ylabel("Region")
+# plt.ylabel("Region")
 plt.tight_layout()
 plt.show()
 
