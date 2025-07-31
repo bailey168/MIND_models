@@ -4,7 +4,7 @@
 #SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/elasticnet_logs/elasticnet_DSST_07-30_%J.err
 #SBATCH --time=48:00:00
 #SBATCH --mem-per-cpu=10G
-#SBATCH --cpus-per-task=12
+#SBATCH --cpus-per-task=24
 #SBATCH --array=0
 
 module load PYTHON/3.6
