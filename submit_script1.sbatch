@@ -7,12 +7,9 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --array=0
 
-echo "Loading modules..."
 module load PYTHON/3.6
 module load PYTHON/3.6
 
-echo "Activating virtual environment..."
 source /external/rprshnas01/tigrlab/scratch/bng/cartbind/data/darwin/bin/activate
 
-echo "Running elastic net analysis script..."
 python3 -u /external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/models_elasticnet/elasticnet_GF.py
