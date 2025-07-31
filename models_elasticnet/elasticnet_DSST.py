@@ -21,7 +21,7 @@ random.seed(42)
 np.random.seed(42)
 
 # %%
-rename = pd.read_csv('/scratch/bng/cartbind/code/MIND_models/region_names/col_renames.csv')
+rename = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/col_renames.csv')
 rename_dict = dict(zip(rename['datafield_code'], rename['datafield_name']))
 
 weights_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/models_elasticnet/elasticnet_weights'
