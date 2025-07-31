@@ -36,7 +36,7 @@ def elasticnet_analysis(X, y, continuous_vars, categorical_vars, weights_dir, da
         # scale continuous features
         ('num', StandardScaler(), continuous_vars),
         # one-hot encode the assessment centre (drop one level to avoid collinearity)
-        ('cat', OneHotEncoder(drop='first', sparse_output=False), categorical_vars),
+        ('cat', OneHotEncoder(drop='first', sparse=False), categorical_vars),
     ])
 
     # Cross-validation set-up
