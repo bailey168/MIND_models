@@ -21,12 +21,11 @@ np.random.seed(42)
 
 # %%
 rename = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/col_renames.csv')
-
 rename_dict = dict(zip(rename['datafield_code'], rename['datafield_name']))
 
 # %%
 # Load the dataset
-df = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master_GF_no_outliers.csv', index_col=0)
+df = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master_TMT_no_outliers.csv', index_col=0)
 
 # %% [markdown]
 # ### Using MIND to predict Fluid Intelligence Score
@@ -49,8 +48,10 @@ with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/re
 with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/FC_regions.txt', 'r') as f:
     FC_regions = [line.strip() for line in f.readlines()]
 
-regions = [MIND_avg_regions, MIND_regions, CT_regions, FC_regions]
-region_names = ['MIND_avg_regions', 'MIND_regions', 'CT_regions', 'FC_regions']
+demo = []
+
+regions = [MIND_avg_regions, MIND_regions, CT_regions, FC_regions, demo]
+region_names = ['MIND_avg_regions', 'MIND_regions', 'CT_regions', 'FC_regions', 'demo']
 
 
 # %%
@@ -60,7 +61,7 @@ categorical_variables = ['assessment_centre']
 
 binary_variables = ['sex']
 
-output_variables = ['20016-2.0']
+output_variables = ['trailmaking_score']
 
 input_variables = list(set(numerical_variables + categorical_variables + binary_variables) - set(output_variables))
 df[categorical_variables] = df[categorical_variables].astype('category')
@@ -222,7 +223,7 @@ print("Starting hyperparameter optimization...")
 for i, region in enumerate(regions):
     region_name = region_names[i]
 
-    if region_name == 'MIND_avg_regions' or region_name == 'MIND_regions' or region_name == 'FC_regions':
+    if region_name == 'MIND_avg_regions' or region_name == 'MIND_regions' or region_name == 'CT_regions' or region_name == 'FC_regions':
         continue
 
     print(f"\n{'='*60}")

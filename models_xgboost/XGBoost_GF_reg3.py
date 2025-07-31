@@ -222,7 +222,7 @@ print("Starting hyperparameter optimization...")
 for i, region in enumerate(regions):
     region_name = region_names[i]
 
-    if region_name == 'MIND_avg_regions' or region_name == 'MIND_regions' or region_name == 'FC_regions':
+    if region_name == 'MIND_avg_regions' or region_name == 'CT_regions' or region_name == 'FC_regions':
         continue
 
     print(f"\n{'='*60}")

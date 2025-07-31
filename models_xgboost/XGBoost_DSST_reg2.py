@@ -21,12 +21,11 @@ np.random.seed(42)
 
 # %%
 rename = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/col_renames.csv')
-
 rename_dict = dict(zip(rename['datafield_code'], rename['datafield_name']))
 
 # %%
 # Load the dataset
-df = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master_GF_no_outliers.csv', index_col=0)
+df = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master_DSST_no_outliers.csv', index_col=0)
 
 # %% [markdown]
 # ### Using MIND to predict Fluid Intelligence Score
@@ -60,7 +59,7 @@ categorical_variables = ['assessment_centre']
 
 binary_variables = ['sex']
 
-output_variables = ['20016-2.0']
+output_variables = ['23324-2.0']
 
 input_variables = list(set(numerical_variables + categorical_variables + binary_variables) - set(output_variables))
 df[categorical_variables] = df[categorical_variables].astype('category')
