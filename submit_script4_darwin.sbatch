@@ -3,8 +3,8 @@
 #SBATCH --output=/scratch/bng/cartbind/data/logs/xgboost_reg_logs/XGBoost_TMT_reg_07-29_%J.out
 #SBATCH --error=/scratch/bng/cartbind/data/logs/xgboost_reg_logs/XGBoost_TMT_reg_07-29_%J.err
 #SBATCH --time=32:00:00
-#SBATCH --mem-per-cpu=6G
-#SBATCH --cpus-per-task=2
+#SBATCH --mem-per-cpu=10G
+#SBATCH --cpus-per-task=12
 #SBATCH --array=0
 #SBATCH --partition=low-moby
 
