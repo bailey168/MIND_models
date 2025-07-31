@@ -7,11 +7,12 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import make_pipeline
-from sklearn.linear_model import ElasticNetCV
+from sklearn.linear_model import ElasticNetCV, ElasticNet
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import random
 import time
+import os
 
 # %%
 start = time.time()
@@ -20,20 +21,22 @@ random.seed(42)
 np.random.seed(42)
 
 # %%
-rename = pd.read_csv('/scratch/bng/cartbind/code/MIND_models/region_names/col_renames.csv')
+rename = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/col_renames.csv')
 rename_dict = dict(zip(rename['datafield_code'], rename['datafield_name']))
+
+weights_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/models_elasticnet/elasticnet_weights'
 
 # %% [markdown]
 # # ElasticNet Analysis Function
 
 # %%
 #inner parallelized
-def elasticnet_analysis(X, y, continuous_vars, categorical_vars, n_splits=10):
+def elasticnet_analysis(X, y, continuous_vars, categorical_vars, weights_dir, data_name, target_name, n_splits=10):
     preprocessor = ColumnTransformer(transformers=[
         # scale continuous features
         ('num', StandardScaler(), continuous_vars),
         # one-hot encode the assessment centre (drop one level to avoid collinearity)
-        ('cat', OneHotEncoder(drop='first', sparse_output=False), categorical_vars),
+        ('cat', OneHotEncoder(drop='first', sparse=False), categorical_vars),
     ])
 
     # Cross-validation set-up
@@ -54,7 +57,7 @@ def elasticnet_analysis(X, y, continuous_vars, categorical_vars, n_splits=10):
             ElasticNetCV(
                 l1_ratio=np.linspace(0.3,0.9,7),
                 alphas=np.logspace(-4,1,11),
-                cv=10, max_iter=30000, random_state=42,
+                cv=10, max_iter=40000, random_state=42,
                 n_jobs=-1
             )
         )
@@ -93,7 +96,48 @@ def elasticnet_analysis(X, y, continuous_vars, categorical_vars, n_splits=10):
     print(f'Mean RMSE:  {np.mean(outer_rmse):.3f} ± {np.std(outer_rmse):.3f}')
     print(f'Mean R²  :  {np.mean(outer_r2):.3f}  ± {np.std(outer_r2):.3f}')
 
+    # Get feature names after preprocessing
+    # First, fit the preprocessor to get the transformed feature names
+    preprocessor_fitted = preprocessor.fit(X)
 
+    # Get feature names for each transformer
+    num_features = continuous_vars
+    cat_features = list(preprocessor_fitted.named_transformers_['cat'].get_feature_names_out(categorical_vars))
+
+    # Combine all feature names in the correct order
+    all_feature_names = num_features + cat_features
+
+    # Final refit on all data using mean best parameters
+    mean_alpha = np.mean([p['alpha'] for p in best_params_per_fold])
+    mean_l1_ratio = np.mean([p['l1_ratio'] for p in best_params_per_fold])
+
+    final_pipe = make_pipeline(
+        preprocessor,
+        ElasticNet(
+            alpha=mean_alpha,
+            l1_ratio=mean_l1_ratio,
+            max_iter=40000,
+            random_state=42
+        )
+    ).fit(X, y)
+
+    elasticnet = final_pipe.named_steps['elasticnet']
+
+    os.makedirs(weights_dir, exist_ok=True)
+
+    # Create a DataFrame to store the coefficients
+    coefs_df = pd.DataFrame({
+        'Feature': all_feature_names,
+        'Coefficient': elasticnet.coef_
+    })
+
+    weights_filename = f'ElasticNet_weights_{data_name}_{target_name}.csv'
+    weights_filepath = os.path.join(weights_dir, weights_filename)
+    coefs_df.to_csv(weights_filepath, index=False)
+
+    print(f"ElasticNet coefficients saved to: {weights_filepath}")
+    print(f"Final model parameters: α={mean_alpha:.4g}, l1_ratio={mean_l1_ratio:.3f}")
+    print(f"Number of non-zero coefficients: {np.sum(elasticnet.coef_ != 0)}")
 
 # %% [markdown]
 # # PAL
@@ -101,14 +145,17 @@ def elasticnet_analysis(X, y, continuous_vars, categorical_vars, n_splits=10):
 # %%
 # Load the dataset
 print("Loading dataset...")
-df = pd.read_csv('/scratch/bng/cartbind/data/ukb_master_PAL_no_outliers.csv', index_col=0)
+df = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master_PAL_no_outliers.csv', index_col=0)
+target_name = 'PAL'
 
 # %% [markdown]
 # ## PAL vs. MIND
 
 # %%
+data_name = 'MIND'
+
 # Set X and y
-with open('/scratch/bng/cartbind/code/MIND_models/region_names/MIND_regions.txt', 'r') as f:
+with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/MIND_regions.txt', 'r') as f:
     brain_regions = [line.strip() for line in f.readlines()]
 
 # Define demographic/clinical features
@@ -132,7 +179,7 @@ continuous_vars  = [c for c in X.columns if c not in categorical_vars]
 
 # %%
 print('Starting elastic net analysis...')
-elasticnet_analysis(X, y, continuous_vars, categorical_vars, n_splits=10)
+elasticnet_analysis(X, y, continuous_vars, categorical_vars, weights_dir, data_name, target_name, n_splits=10)
 
 print(f'\nTotal time taken: {time.time() - start:.2f} seconds')
 

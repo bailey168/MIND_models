@@ -2,7 +2,6 @@
 # # Set up
 
 # %%
-print("Importing necessary libraries...")
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
@@ -22,7 +21,6 @@ random.seed(42)
 np.random.seed(42)
 
 # %%
-print("Loading rename dict...")
 rename = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/col_renames.csv')
 rename_dict = dict(zip(rename['datafield_code'], rename['datafield_name']))
 
