@@ -102,7 +102,7 @@ def elasticnet_analysis(X, y, continuous_vars, categorical_vars, weights_dir, da
 
     # Get feature names for each transformer
     num_features = continuous_vars
-    cat_features = list(preprocessor_fitted.named_transformers_['cat'].get_feature_names_out(categorical_vars))
+    cat_features = list(preprocessor_fitted.named_transformers_['cat'].get_feature_names(categorical_vars))
 
     # Combine all feature names in the correct order
     all_feature_names = num_features + cat_features
