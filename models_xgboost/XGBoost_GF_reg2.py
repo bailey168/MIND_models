@@ -20,12 +20,13 @@ random.seed(42)
 np.random.seed(42)
 
 # %%
-rename = pd.read_csv('/scratch/bng/cartbind/code/MIND_models/region_names/col_renames.csv')
+rename = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/col_renames.csv')
+
 rename_dict = dict(zip(rename['datafield_code'], rename['datafield_name']))
 
 # %%
 # Load the dataset
-df = pd.read_csv('/scratch/bng/cartbind/data/ukb_master_GF_no_outliers.csv', index_col=0)
+df = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master_GF_no_outliers.csv', index_col=0)
 
 # %% [markdown]
 # ### Using MIND to predict Fluid Intelligence Score
@@ -35,17 +36,17 @@ df = pd.read_csv('/scratch/bng/cartbind/data/ukb_master_GF_no_outliers.csv', ind
 df = df.rename(columns=rename_dict)
 
 # %%
-with open('/scratch/bng/cartbind/code/MIND_models/region_names/MIND_avg_regions.txt', 'r') as f:
+with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/MIND_avg_regions.txt', 'r') as f:
     MIND_avg_regions = [line.strip() for line in f.readlines()]
 
-with open('/scratch/bng/cartbind/code/MIND_models/region_names/MIND_regions.txt', 'r') as f:
+with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/MIND_regions.txt', 'r') as f:
     MIND_regions = [line.strip() for line in f.readlines()]
 
-with open('/scratch/bng/cartbind/code/MIND_models/region_names/CT_regions.txt', 'r') as f:
+with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/CT_regions.txt', 'r') as f:
     CT_regions_base = [line.strip() for line in f.readlines()]
     CT_regions = [rename_dict[region] for region in CT_regions_base]
 
-with open('/scratch/bng/cartbind/code/MIND_models/region_names/FC_regions.txt', 'r') as f:
+with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/FC_regions.txt', 'r') as f:
     FC_regions = [line.strip() for line in f.readlines()]
 
 regions = [MIND_avg_regions, MIND_regions, CT_regions, FC_regions]
@@ -179,7 +180,7 @@ def hyper_parameter_optimization(data_df, input_variables, output_variable, nume
 
         columns = X_test.columns
         # print(data_x, data_y, best_hyperparameters, column_names)
-        dir_name = f'/scratch/bng/cartbind/data/hyperparameters/best_hyperparameters_{output_variable}_reg_07-21/{region_name}/split_{splt_idx}'
+        dir_name = f'/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/hyperparameters/best_hyperparameters_{output_variable}_reg_07-21/{region_name}/split_{splt_idx}'
         makedirs(dir_name, exist_ok=True)
         column_names = np.array(list(columns))
         np.savez(join(dir_name, 'train_test_data.npz'), x_train=X_trainval, y_train=y_trainval,

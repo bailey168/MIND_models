@@ -7,7 +7,8 @@
 #SBATCH --cpus-per-task=36
 #SBATCH --array=0
 
-
+module load PYTHON/3.6
+module load PYTHON/3.6
 
 source /external/rprshnas01/tigrlab/scratch/bng/cartbind/data/darwin/bin/activate
 
