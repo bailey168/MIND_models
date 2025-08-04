@@ -12,4 +12,4 @@ module load PYTHON/3.6
 
 source /external/rprshnas01/tigrlab/scratch/bng/cartbind/data/darwin/bin/activate
 
-python3 -u /external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/test_best_models_stats_scc.py
+python3 -u /external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/xgboost/test_best_models_stats_scc.py
