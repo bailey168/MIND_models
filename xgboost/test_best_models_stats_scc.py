@@ -19,29 +19,31 @@ np.random.seed(42)
 n_splits = 10
 
 # %%
-rename = pd.read_csv('/Users/baileyng/MIND_models/region_names/col_renames.csv')
+rename = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/col_renames.csv')
 rename_dict = dict(zip(rename['datafield_code'], rename['datafield_name']))
 
 # %%
-with open('/Users/baileyng/MIND_models/region_names/MIND_avg_regions.txt', 'r') as f:
+with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/MIND_avg_regions.txt', 'r') as f:
     MIND_avg_regions = [line.strip() for line in f.readlines()]
 
-with open('/Users/baileyng/MIND_models/region_names/MIND_regions.txt', 'r') as f:
+with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/MIND_regions.txt', 'r') as f:
     MIND_regions = [line.strip() for line in f.readlines()]
 
-with open('/Users/baileyng/MIND_models/region_names/CT_regions.txt', 'r') as f:
+with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/CT_regions.txt', 'r') as f:
     CT_regions_base = [line.strip() for line in f.readlines()]
     CT_regions = [rename_dict[region] for region in CT_regions_base]
 
-with open('/Users/baileyng/MIND_models/region_names/FC_regions.txt', 'r') as f:
+with open('/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/FC_regions.txt', 'r') as f:
     FC_regions = [line.strip() for line in f.readlines()]
 
 demo = []
 
 # regions = [MIND_avg_regions, MIND_regions, CT_regions, FC_regions, demo]
 # region_names = ['MIND_avg_regions', 'MIND_regions', 'CT_regions', 'FC_regions', 'demo']
-regions = [MIND_avg_regions, CT_regions, FC_regions, demo]
-region_names = ['MIND_avg_regions', 'CT_regions', 'FC_regions', 'demo']
+# regions = [MIND_avg_regions, CT_regions, FC_regions, demo]
+# region_names = ['MIND_avg_regions', 'CT_regions', 'FC_regions', 'demo']
+regions = [MIND_regions]
+region_names = ['MIND_regions']
 
 
 # %%
@@ -89,11 +91,9 @@ def train_test_metrics(hyperparameter_dir, categorical_variables, binary_variabl
 
             # cast types
             for c in categorical_variables:
-                if c in cols:
                     X_train[c] = X_train[c].astype('category')
                     X_test[c]  = X_test[c].astype('category')
             for b in binary_variables:
-                if b in cols:
                     X_train[b] = pd.to_numeric(X_train[b], errors='coerce')
                     X_test[b]  = pd.to_numeric(X_test[b], errors='coerce')
 
@@ -162,7 +162,46 @@ def train_test_metrics(hyperparameter_dir, categorical_variables, binary_variabl
 # # GF
 
 # %%
-hyperparameter_dir = '/Users/baileyng/MIND_data/hyperparameters/best_hyperparameters_20016-2.0_reg_07-21'
+hyperparameter_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/hyperparameters/best_hyperparameters_20016-2.0_reg_07-21'
+
+results = train_test_metrics(
+    hyperparameter_dir=hyperparameter_dir,
+    categorical_variables=categorical_variables,
+    binary_variables=binary_variables,
+    numerical_variables=numerical_variables
+)
+
+# %% [markdown]
+# # PAL
+
+# %%
+hyperparameter_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/hyperparameters/best_hyperparameters_20197-2.0_reg_07-21'
+
+results = train_test_metrics(
+    hyperparameter_dir=hyperparameter_dir,
+    categorical_variables=categorical_variables,
+    binary_variables=binary_variables,
+    numerical_variables=numerical_variables
+)
+
+# %% [markdown]
+# # DSST
+
+# %%
+hyperparameter_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/hyperparameters/best_hyperparameters_23324-2.0_reg_07-21'
+
+results = train_test_metrics(
+    hyperparameter_dir=hyperparameter_dir,
+    categorical_variables=categorical_variables,
+    binary_variables=binary_variables,
+    numerical_variables=numerical_variables
+)
+
+# %% [markdown]
+# # TMT
+
+# %%
+hyperparameter_dir = '/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/hyperparameters/best_hyperparameters_trailmaking_score_reg_07-21'
 
 results = train_test_metrics(
     hyperparameter_dir=hyperparameter_dir,
