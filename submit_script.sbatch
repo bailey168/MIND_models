@@ -2,7 +2,7 @@
 #SBATCH --job-name=aggregate_aparc_full
 #SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/matrix_logs/aggregate_aparc_full_%J.out
 #SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/matrix_logs/aggregate_aparc_full_%J.err
-#SBATCH --time=2:00:00
+#SBATCH --time=12:00:00
 #SBATCH --mem-per-cpu=5G
 #SBATCH --cpus-per-task=36
 #SBATCH --array=0
