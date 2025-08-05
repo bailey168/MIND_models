@@ -7,7 +7,7 @@ rng(42, 'combRecursive');
 addpath('/Users/baileyng/MIND_models/circularGraph');
 
 % Load the CSV data with preserved column headers
-data_path = '/Users/baileyng/MIND_data/ukb_cog/ukb_master_GF_no_outliers.csv';
+data_path = '/Users/baileyng/MIND_data/ukb_cog/ukb_master_DSST_no_outliers.csv';
 data = readtable(data_path, 'VariableNamingRule', 'preserve');
 fprintf('Data loaded successfully. Size: %d rows x %d columns\n', height(data), width(data));
 
@@ -23,7 +23,7 @@ fprintf('X matrix created with %d rows x %d columns\n', height(X), width(X));
 
 % Set Y
 % Y_columns = {'trailmaking_score', '20016-2.0', '20197-2.0', '23324-2.0'};
-Y_columns = {'20016-2.0'};
+Y_columns = {'23324-2.0'};
 Y = data(:, Y_columns);
 fprintf('Y matrix created with %d rows x %d columns\n', height(Y), width(Y));
 
@@ -35,7 +35,7 @@ Y = zscore(Y);    % mean-0, SD-1 each column
 X = zscore(X);
 Y(:,1)=Y(:,1)*-1;
 % ncomp = 3;        % number of PLS components
-ncomp = 5;
+ncomp = 2;
 
 % Regress out age, sex and other covariates
 % Extract covariate columns from data
@@ -93,7 +93,7 @@ weights_table = array2table(W, ...
 
 % Save to CSV file
 data_name = 'MIND';
-target_name = 'GF5';  % Using the Y column name
+target_name = 'DSST2';  % Using the Y column name
 weights_filename = sprintf('PLS_weights_%s_%s.csv', data_name, target_name);
 weights_filepath = fullfile(weights_dir, weights_filename);
 
