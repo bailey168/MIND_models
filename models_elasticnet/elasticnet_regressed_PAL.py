@@ -208,16 +208,16 @@ def elasticnet_covariate_regression(X, y, brain_regions, X_covariates, y_covaria
     }
 
 # %% [markdown]
-# # GF
+# # PAL
 
 # %%
 # Load the dataset
 print("Loading dataset...")
-df = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master_GF_no_outliers.csv', index_col=0)
-target_name = 'GF'
+df = pd.read_csv('/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master_PAL_no_outliers.csv', index_col=0)
+target_name = 'PAL'
 
 # %% [markdown]
-# ## GF vs. MIND
+# ## PAL vs. MIND
 
 # %%
 data_name = 'MIND'
