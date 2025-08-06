@@ -129,7 +129,7 @@ def elasticnet_covariate_regression(X, y, brain_regions, X_covariates, y_covaria
         elastic_net = ElasticNetCV(
             l1_ratio=np.linspace(0.3, 0.9, 7),
             alphas=np.logspace(-4, 1, 15),
-            cv=10, max_iter=25000, random_state=42,
+            cv=10, max_iter=40000, random_state=42,
             n_jobs=-1
         )
         
@@ -234,7 +234,7 @@ y_covariates = ['31-0.0', '21003-2.0', '54-2.0']
 all_vars = list(set(X_covariates + y_covariates + brain_regions))
 
 X = df[all_vars]
-y = df['20016-2.0']
+y = df['20197-2.0']
 
 print(f"Original shapes - X: {X.shape}, y: {y.shape}")
 
