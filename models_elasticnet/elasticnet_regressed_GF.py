@@ -156,8 +156,8 @@ def elasticnet_covariate_regression(X, y, brain_regions, X_covariates, y_covaria
         surviving = [col for col, c in zip(X_final.columns, coefs) if c != 0]
         nonzero_predictors.append(surviving)
         
-        print(f'Fold {fold:02d} • MAE={mae:.3f} • RMSE={rmse:.3f} • R²={r2:.3f} '
-              f'• α={elastic_net.alpha_:.4g} • l1_ratio={elastic_net.l1_ratio_:.2f}')
+        print(f'Fold {fold:02d} - MAE={mae:.3f} - RMSE={rmse:.3f} - R2={r2:.3f} '
+              f'- alpha={elastic_net.alpha_:.4g} - l1_ratio={elastic_net.l1_ratio_:.2f}')
     
     # Aggregate results
     print('\n=== 10-fold CV summary ===')
@@ -195,7 +195,7 @@ def elasticnet_covariate_regression(X, y, brain_regions, X_covariates, y_covaria
     coefs_df.to_csv(weights_filepath, index=False)
     
     print(f"\nElasticNet coefficients saved to: {weights_filepath}")
-    print(f"Final model parameters: α={mean_alpha:.4g}, l1_ratio={mean_l1_ratio:.3f}")
+    print(f"Final model parameters: alpha={mean_alpha:.4g}, l1_ratio={mean_l1_ratio:.3f}")
     print(f"Number of non-zero coefficients: {np.sum(final_model.coef_ != 0)}")
     
     return {
