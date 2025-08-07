@@ -3,8 +3,8 @@ import numpy as np
 import glob
 import os
 
-input_dir = '/scratch/p/pz249/baileyng/data/MIND_results/full'
-output_dir = '/scratch/p/pz249/baileyng/data/MIND_results/avg'
+input_dir = '/scratch/p/pz249/baileyng/3D+4D_data/MIND_results/full'
+output_dir = '/scratch/p/pz249/baileyng/3D+4D_data/MIND_results/avg'
 
 os.makedirs(output_dir, exist_ok=True)
 
