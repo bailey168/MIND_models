@@ -3,7 +3,6 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch_geometric.data import Data
-import time
 
 def load_matrix(path: Path) -> tuple[np.ndarray, list[str]]:
     # Load the full CSV including headers
