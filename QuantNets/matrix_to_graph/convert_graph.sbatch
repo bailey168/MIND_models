@@ -7,6 +7,8 @@
 #SBATCH --cpus-per-task=36
 #SBATCH --array=0
 
+start_time=$(date +%s)
+
 module load PYTHON/3.6
 module load PYTHON/3.6
 
@@ -35,5 +37,8 @@ for csv_file in "$INPUT_DIR"/*.csv; do
     fi
 done
 
+end_time=$(date +%s)
+runtime=$((end_time - start_time))
+
 echo "All files processed"
-    
+echo "Total runtime: $runtime seconds"    
