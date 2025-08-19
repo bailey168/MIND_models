@@ -9,9 +9,6 @@
 
 start_time=$(date +%s)
 
-module load PYTHON/3.6
-module load PYTHON/3.6
-
 source /external/rprshnas01/tigrlab/scratch/bng/cartbind/data/darwin_scc/bin/activate
 
 INPUT_DIR=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/FC_matrices/DSST
