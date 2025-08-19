@@ -175,8 +175,8 @@ def main():
     """Main function to process FC matrices."""
     
     # Configuration - modify these paths as needed
-    INPUT_DIR = "/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/FC_matrices/DSST"
-    OUTPUT_DIR = "/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/FC_graphs/DSST"
+    INPUT_DIR = "/scratch/bng/cartbind/data/FC_matrices/DSST"
+    OUTPUT_DIR = "/scratch/bng/cartbind/data/FC_graphs/DSST"
     
     # Processing parameters
     KEEP_PERCENT = 0.5
