@@ -9,6 +9,8 @@
 
 start_time=$(date +%s)
 
+module purge
+
 source /external/rprshnas01/tigrlab/scratch/bng/cartbind/data/darwin_scc/bin/activate
 
 INPUT_DIR=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/FC_matrices/DSST

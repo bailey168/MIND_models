@@ -67,7 +67,7 @@ def matrix_to_graph(mat: np.ndarray, keep_percent: float = 0.5, keep_self_loops:
 
     # One-hot node features (brain region identity)
     x = torch.eye(n, dtype=torch.float32)
-
+    
     # Optionally add diagonal entries (self-loops) as edges if requested
     if keep_self_loops:
         self_nodes = torch.arange(n, dtype=torch.long)
