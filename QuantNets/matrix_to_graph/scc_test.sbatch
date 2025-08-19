@@ -6,7 +6,6 @@
 #SBATCH --mem-per-cpu=1G
 #SBATCH --cpus-per-task=36
 #SBATCH --array=0
-#SBATCH --partition=low-moby
 
 source /external/rprshnas01/tigrlab/scratch/bng/cartbind/data/darwin_scc/bin/activate
 
