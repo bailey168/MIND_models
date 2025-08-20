@@ -41,7 +41,7 @@ def load_graph_data_with_labels(data_col: str, graph_dir: str, csv_file: str) ->
     
     for file in graph_files:
         # Extract eid from filename
-        eid = file.split('_')[0]
+        eid = int(file.split('_')[0])
         
         if eid in eid_to_label:
             # Load graph data
