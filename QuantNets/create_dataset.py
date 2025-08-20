@@ -193,7 +193,7 @@ if __name__ == "__main__":
         csv_file=csv_file,
         output_dir=output_dir,
         dataset_name=dataset_name,
-        train_ratio=0.75,
+        train_ratio=0.8,
         random_seed=42
     )
 
