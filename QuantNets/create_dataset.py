@@ -179,17 +179,17 @@ def process_custom_graph_dataset(data_col: str, graph_dir: str, csv_file: str, o
 if __name__ == "__main__":
     # Set your paths here
     data_col = "23324-2.0"
-    graph_directory = "/scratch/bng/cartbind/data/FC_graphs/raw/DSST"
-    csv_file_path = "/scratch/bng/cartbind/data/ukb_master_DSST_no_outliers.csv"
-    output_directory = "/scratch/bng/cartbind/data/FC_graphs/processed/DSST"
+    graph_dir = "/scratch/bng/cartbind/data/FC_graphs/raw/DSST"
+    csv_file = "/scratch/bng/cartbind/data/ukb_master_DSST_no_outliers.csv"
+    output_dir = "/scratch/bng/cartbind/data/FC_graphs/processed/DSST"
     dataset_name = "custom_dataset_selfloops_True_edgeft_None_norm_True"
 
     # Process the dataset
     result_dir = process_custom_graph_dataset(
         data_col=data_col,
-        graph_dir=graph_directory,
-        csv_file=csv_file_path,
-        output_dir=output_directory,
+        graph_dir=graph_dir,
+        csv_file=csv_file,
+        output_dir=output_dir,
         dataset_name=dataset_name,
         train_ratio=0.75,
         random_seed=42
