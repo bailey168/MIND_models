@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import torch
 import pickle
-from pathlib import Path
+import time
 from typing import List, Dict, Tuple
 
 def load_graph_data_with_labels(data_col: str, graph_dir: str, csv_file: str) -> List[Dict]:
@@ -177,12 +177,14 @@ def process_custom_graph_dataset(data_col: str, graph_dir: str, csv_file: str, o
 
 # Example usage
 if __name__ == "__main__":
-    # Set your paths here
+    # Set variables and paths
     data_col = "23324-2.0"
     graph_dir = "/scratch/bng/cartbind/data/FC_graphs/raw/DSST"
     csv_file = "/scratch/bng/cartbind/data/ukb_master_DSST_no_outliers.csv"
     output_dir = "/scratch/bng/cartbind/data/FC_graphs/processed/DSST"
     dataset_name = "custom_dataset_selfloops_True_edgeft_None_norm_True"
+
+    start_time = time.time()
 
     # Process the dataset
     result_dir = process_custom_graph_dataset(
@@ -194,5 +196,8 @@ if __name__ == "__main__":
         train_ratio=0.75,
         random_seed=42
     )
-    
+
+    end_time = time.time()
+    elapsed_time = end_time - start_time
     print(f"Dataset processing complete. Files saved in: {result_dir}")
+    print(f"Elapsed time: {elapsed_time:.2f} seconds")
