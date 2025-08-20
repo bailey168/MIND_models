@@ -47,7 +47,7 @@ def load_graph_data_with_labels(data_col: str, graph_dir: str, csv_file: str) ->
             # Load graph data
             graph_path = os.path.join(graph_dir, file)
             try:
-                graph_data = torch.load(graph_path)
+                graph_data = torch.load(graph_path, weights_only=False)
                 
                 # Set label
                 label = eid_to_label[eid]
