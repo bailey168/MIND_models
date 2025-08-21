@@ -88,9 +88,9 @@ def process_single_eid(args):
 # Main execution
 if __name__ == "__main__":
     # Process all eids in the CSV file
-    csv_file = "/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master_DSST_no_outliers.csv"
+    csv_file = "/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/ukb_master_GF_no_outliers.csv"
     fc_regions_file = "/external/rprshnas01/tigrlab/scratch/bng/cartbind/code/MIND_models/region_names/FC_regions.txt"
-    output_directory = "/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/FC_matrices/DSST"
+    output_directory = "/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/FC_matrices/GF"
     
     # Read the CSV to get all unique eids
     df = pd.read_csv(csv_file)
