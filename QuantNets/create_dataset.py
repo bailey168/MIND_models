@@ -178,10 +178,10 @@ def process_custom_graph_dataset(data_col: str, graph_dir: str, csv_file: str, o
 # Example usage
 if __name__ == "__main__":
     # Set variables and paths
-    data_col = "23324-2.0"
-    graph_dir = "/scratch/bng/cartbind/data/FC_graphs/raw/DSST"
-    csv_file = "/scratch/bng/cartbind/data/ukb_master_DSST_no_outliers.csv"
-    output_dir = "/scratch/bng/cartbind/data/FC_graphs/processed/DSST"
+    data_col = "20016-2.0"
+    graph_dir = "/scratch/bng/cartbind/data/FC_graphs/raw/GF"
+    csv_file = "/scratch/bng/cartbind/data/ukb_master_GF_no_outliers.csv"
+    output_dir = "/scratch/bng/cartbind/data/FC_graphs/processed/GF"
     dataset_name = "custom_dataset_selfloops_True_edgeft_None_norm_True"
 
     start_time = time.time()
