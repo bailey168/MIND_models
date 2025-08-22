@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=PAL_FC_matrices
-#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/graph_logs/PAL_FC_matrices_%J.out
-#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/graph_logs/PAL_FC_matrices_%J.err
+#SBATCH --job-name=TMT_FC_matrices
+#SBATCH --output=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/graph_logs/TMT_FC_matrices_%J.out
+#SBATCH --error=/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/logs/graph_logs/TMT_FC_matrices_%J.err
 #SBATCH --time=24:00:00
 #SBATCH --mem-per-cpu=2G
 #SBATCH --cpus-per-task=36

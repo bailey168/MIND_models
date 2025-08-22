@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=create_dataset_GF
-#SBATCH --output=/scratch/bng/cartbind/data/logs/graph_logs/create_dataset_GF_%J.out
-#SBATCH --error=/scratch/bng/cartbind/data/logs/graph_logs/create_dataset_GF_%J.err
+#SBATCH --job-name=create_dataset_DSST
+#SBATCH --output=/scratch/bng/cartbind/data/logs/graph_logs/create_dataset_DSST_%J.out
+#SBATCH --error=/scratch/bng/cartbind/data/logs/graph_logs/create_dataset_DSST_%J.err
 #SBATCH --time=2:00:00
 #SBATCH --mem-per-cpu=1G
 #SBATCH --cpus-per-task=12
