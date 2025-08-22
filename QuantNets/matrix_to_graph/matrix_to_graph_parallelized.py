@@ -175,8 +175,8 @@ def main():
     """Main function to process FC matrices."""
     
     # Configuration - modify these paths as needed
-    INPUT_DIR = "/scratch/bng/cartbind/data/FC_matrices/GF"
-    OUTPUT_DIR = "/scratch/bng/cartbind/data/FC_graphs/raw/GF"
+    INPUT_DIR = "/scratch/bng/cartbind/data/FC_matrices/PAL"
+    OUTPUT_DIR = "/scratch/bng/cartbind/data/FC_graphs/raw/PAL"
     
     # Processing parameters
     KEEP_PERCENT = 0.5

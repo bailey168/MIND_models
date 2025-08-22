@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=convert_graph_GF
-#SBATCH --output=/scratch/bng/cartbind/data/logs/graph_logs/convert_graph_GF_%J.out
-#SBATCH --error=/scratch/bng/cartbind/data/logs/graph_logs/convert_graph_GF_%J.err
+#SBATCH --job-name=convert_graph_PAL
+#SBATCH --output=/scratch/bng/cartbind/data/logs/graph_logs/convert_graph_PAL_%J.out
+#SBATCH --error=/scratch/bng/cartbind/data/logs/graph_logs/convert_graph_PAL_%J.err
 #SBATCH --time=12:00:00
 #SBATCH --mem-per-cpu=3G
 #SBATCH --cpus-per-task=12
