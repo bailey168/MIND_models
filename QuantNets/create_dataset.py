@@ -179,9 +179,9 @@ def process_custom_graph_dataset(data_col: str, graph_dir: str, csv_file: str, o
 if __name__ == "__main__":
     # Set variables and paths
     data_col = "23324-2.0"
-    graph_dir = "/scratch/bng/cartbind/data/FC_graphs/raw/DSST"
+    graph_dir = "/scratch/bng/cartbind/data/FC_graphs/raw/DSST30"
     csv_file = "/scratch/bng/cartbind/data/ukb_master_DSST_no_outliers.csv"
-    output_dir = "/scratch/bng/cartbind/data/FC_graphs/processed/DSST"
+    output_dir = "/scratch/bng/cartbind/data/FC_graphs/processed/DSST30"
     dataset_name = "custom_dataset_selfloops_True_edgeft_None_norm_True"
 
     start_time = time.time()
