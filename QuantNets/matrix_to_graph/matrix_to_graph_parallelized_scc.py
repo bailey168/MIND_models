@@ -70,8 +70,8 @@ def matrix_to_graph(mat: np.ndarray, keep_percent: float = 0.5, keep_self_loops:
     edge_index = torch.from_numpy(edge_index_np).long()
     edge_attr = torch.from_numpy(w).float()
 
-    # One-hot node features (brain region identity)
-    x = torch.eye(n, dtype=torch.float32)
+    # Node indices (brain region identity)
+    x = torch.arange(n, dtype=torch.int64)
     
     # Optionally add diagonal entries (self-loops) as edges if requested
     if keep_self_loops:
@@ -179,7 +179,7 @@ def main():
     OUTPUT_DIR = "/external/rprshnas01/tigrlab/scratch/bng/cartbind/data/FC_graphs/DSST"
     
     # Processing parameters
-    KEEP_PERCENT = 0.5
+    KEEP_PERCENT = 0.3
     KEEP_SELF_LOOPS = True
     MAX_WORKERS = None  # Use all available CPUs, or set to specific number
     

@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=convert_graph_TMT
-#SBATCH --output=/scratch/bng/cartbind/data/logs/graph_logs/convert_graph_TMT_%J.out
-#SBATCH --error=/scratch/bng/cartbind/data/logs/graph_logs/convert_graph_TMT_%J.err
+#SBATCH --job-name=convert_graph_DSST30
+#SBATCH --output=/scratch/bng/cartbind/data/logs/graph_logs/convert_graph_DSST30_%J.out
+#SBATCH --error=/scratch/bng/cartbind/data/logs/graph_logs/convert_graph_DSST30_%J.err
 #SBATCH --time=12:00:00
 #SBATCH --mem-per-cpu=3G
 #SBATCH --cpus-per-task=12

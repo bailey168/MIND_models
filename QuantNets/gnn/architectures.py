@@ -15,12 +15,20 @@ from torch_geometric.nn import GCNConv, ChebConv, GraphConv, SGConv, GENConv, Ge
 #   bias: bool = True, **kwargs)
 class GCNConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
-                model_dim, hidden_sf=5, out_sf=4, improved=True, cached=False, aggr='add'):
+                model_dim, hidden_sf=5, out_sf=4, improved=True, cached=False, aggr='add',
+                embedding_dim=16):
         super(GCNConvNet, self).__init__()
         self.layers_num = layers_num
+        self.out_dim = out_dim  # Store output dimension
+
+        # Add embedding layer to convert node indices to dense features
+        self.node_embedding = torch.nn.Embedding(
+            num_embeddings=input_features,
+            embedding_dim=embedding_dim
+        )
 
         self.conv_layers = [GCNConv(
-                                    in_channels=input_features,
+                                    in_channels=embedding_dim,
                                     out_channels=hidden_sf * model_dim,
                                     improved=improved,
                                     cached=cached,
@@ -44,11 +52,18 @@ class GCNConvNet(torch.nn.Module):
         self.fc1 = torch.nn.Linear(out_sf * output_channels, out_dim)
 
     def forward(self, data):
+        data.x = self.node_embedding(data.x)
+
         for i in range(self.layers_num):
-          data.x = self.conv_layers[i](data.x, data.edge_index)
+          edge_weight = data.edge_attr.squeeze(-1)
+          data.x = self.conv_layers[i](data.x, data.edge_index, edge_weight=edge_weight)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
-        return F.log_softmax(x, dim=1)
+        # Changed for regression:
+        if self.out_dim == 1:
+            return x.squeeze(-1)  # For single-output regression, return scalar values
+        else:
+            return x  # For multi-output regression, return raw values (no softmax)
     
 
 # ChebConv. 2016 https://arxiv.org/abs/1606.09375
@@ -60,12 +75,19 @@ class GCNConvNet(torch.nn.Module):
 #   bias: bool = True, **kwargs)
 class ChebConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
-                model_dim, hidden_sf=3, out_sf=2, K=3, normalization='sym', aggr='add'): # norm: sym / rw / None
+                model_dim, hidden_sf=3, out_sf=2, K=3, normalization='sym', aggr='add',
+                embedding_dim=16): # norm: sym / rw / None
         super(ChebConvNet, self).__init__()
         self.layers_num = layers_num
+        self.out_dim = out_dim  # Store output dimension
+
+        self.node_embedding = torch.nn.Embedding(
+            num_embeddings=input_features,
+            embedding_dim=embedding_dim
+        )
 
         self.conv_layers = [ChebConv(
-                                    in_channels=input_features,
+                                    in_channels=embedding_dim,
                                     out_channels=hidden_sf * model_dim,
                                     K=K,
                                     normalization=normalization,
@@ -89,11 +111,17 @@ class ChebConvNet(torch.nn.Module):
         self.fc1 = torch.nn.Linear(out_sf * output_channels, out_dim)
 
     def forward(self, data):
+        data.x = self.node_embedding(data.x)
+
         for i in range(self.layers_num):
           data.x = self.conv_layers[i](data.x, data.edge_index, batch=data.batch)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
-        return F.log_softmax(x, dim=1)
+        # Changed for regression:
+        if self.out_dim == 1:
+            return x.squeeze(-1)  # For single-output regression, return scalar values
+        else:
+            return x  # For multi-output regression, return raw values (no softmax)
     
 
 # GraphConv. 2018 https://arxiv.org/abs/1810.02244
@@ -105,12 +133,19 @@ class ChebConvNet(torch.nn.Module):
 #   **kwargs)
 class GraphConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
-                model_dim, hidden_sf=4, out_sf=2, bias=True, aggr='add'):
+                model_dim, hidden_sf=4, out_sf=2, bias=True, aggr='add',
+                embedding_dim=16):
         super(GraphConvNet, self).__init__()
         self.layers_num = layers_num
+        self.out_dim = out_dim  # Store output dimension
+
+        self.node_embedding = torch.nn.Embedding(
+            num_embeddings=input_features,
+            embedding_dim=embedding_dim
+        )
 
         self.conv_layers = [GraphConv(
-                                    in_channels=input_features,
+                                    in_channels=embedding_dim,
                                     out_channels=hidden_sf * model_dim,
                                     bias=bias,
                                     aggr=aggr
@@ -131,11 +166,17 @@ class GraphConvNet(torch.nn.Module):
         self.fc1 = torch.nn.Linear(out_sf * output_channels, out_dim)
 
     def forward(self, data):
+        data.x = self.node_embedding(data.x)
+
         for i in range(self.layers_num):
           data.x = self.conv_layers[i](data.x, data.edge_index)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
-        return F.log_softmax(x, dim=1)
+        # Changed for regression:
+        if self.out_dim == 1:
+            return x.squeeze(-1)  # For single-output regression, return scalar values
+        else:
+            return x  # For multi-output regression, return raw values (no softmax)
 
 
 # SGConv. 2019 https://arxiv.org/abs/1902.07153
@@ -149,12 +190,19 @@ class GraphConvNet(torch.nn.Module):
 #   **kwargs)
 class SGConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
-                model_dim, hidden_sf=5, out_sf=4, K=5, bias=True, aggr='add'):
+                model_dim, hidden_sf=5, out_sf=4, K=5, bias=True, aggr='add',
+                embedding_dim=16):
         super(SGConvNet, self).__init__()
         self.layers_num = layers_num
+        self.out_dim = out_dim  # Store output dimension
+
+        self.node_embedding = torch.nn.Embedding(
+            num_embeddings=input_features,
+            embedding_dim=embedding_dim
+        )
 
         self.conv_layers = [SGConv(
-                                    in_channels=input_features,
+                                    in_channels=embedding_dim,
                                     out_channels=hidden_sf * model_dim,
                                     K=K,
                                     bias=bias,
@@ -178,11 +226,17 @@ class SGConvNet(torch.nn.Module):
         self.fc1 = torch.nn.Linear(out_sf * output_channels, out_dim)
 
     def forward(self, data):
+        data.x = self.node_embedding(data.x)
+
         for i in range(self.layers_num):
           data.x = self.conv_layers[i](data.x, data.edge_index)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
-        return F.log_softmax(x, dim=1)
+        # Changed for regression:
+        if self.out_dim == 1:
+            return x.squeeze(-1)  # For single-output regression, return scalar values
+        else:
+            return x  # For multi-output regression, return raw values (no softmax)
  
 
 # GENConv 2020 https://arxiv.org/abs/2006.07739
@@ -203,12 +257,19 @@ class SGConvNet(torch.nn.Module):
 #               edge_dim: Optional[int] = None, **kwargs)
 class GENConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
-                model_dim, hidden_sf=3, out_sf=2, use_bias=True, aggr='add'):
+                model_dim, hidden_sf=3, out_sf=2, use_bias=True, aggr='add',
+                embedding_dim=16):
         super(GENConvNet, self).__init__()
         self.layers_num = layers_num
+        self.out_dim = out_dim  # Store output dimension
+
+        self.node_embedding = torch.nn.Embedding(
+            num_embeddings=input_features,
+            embedding_dim=embedding_dim
+        )
 
         self.conv_layers = [GENConv(
-                                      in_channels=input_features,
+                                      in_channels=embedding_dim,
                                       out_channels=hidden_sf * model_dim,
                                       num_layers=1,
                                       bias=use_bias,
@@ -233,11 +294,17 @@ class GENConvNet(torch.nn.Module):
         self.fc1 = torch.nn.Linear(out_sf * output_channels, out_dim)
 
     def forward(self, data):
+        data.x = self.node_embedding(data.x)
+
         for i in range(self.layers_num):
           data.x = self.conv_layers[i](data.x, data.edge_index)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
-        return F.log_softmax(x, dim=1)
+        # Changed for regression:
+        if self.out_dim == 1:
+            return x.squeeze(-1)  # For single-output regression, return scalar values
+        else:
+            return x  # For multi-output regression, return raw values (no softmax)
 
 
 # GeneralConv 2020 https://arxiv.org/abs/2011.08843
@@ -254,12 +321,19 @@ class GENConvNet(torch.nn.Module):
 #                   bias: bool = True, **kwargs)
 class GeneralConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
-                model_dim, hidden_sf=3, out_sf=1, hidden_heads=4, use_bias=True, aggr="add"):
+                model_dim, hidden_sf=3, out_sf=1, hidden_heads=4, use_bias=True, aggr="add",
+                embedding_dim=16):
         super(GeneralConvNet, self).__init__()
         self.layers_num = layers_num
+        self.out_dim = out_dim  # Store output dimension
+
+        self.node_embedding = torch.nn.Embedding(
+            num_embeddings=input_features,
+            embedding_dim=embedding_dim
+        )
 
         self.conv_layers = [GeneralConv(
-                                      in_channels=input_features,
+                                      in_channels=embedding_dim,
                                       out_channels=hidden_sf * model_dim,
                                       heads=hidden_heads,
                                       bias=use_bias,
@@ -284,11 +358,17 @@ class GeneralConvNet(torch.nn.Module):
         self.fc1 = torch.nn.Linear(out_sf * output_channels, out_dim)
 
     def forward(self, data):
+        data.x = self.node_embedding(data.x)
+
         for i in range(self.layers_num):
           data.x = self.conv_layers[i](data.x, data.edge_index)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
-        return F.log_softmax(x, dim=1)
+        # Changed for regression:
+        if self.out_dim == 1:
+            return x.squeeze(-1)  # For single-output regression, return scalar values
+        else:
+            return x  # For multi-output regression, return raw values (no softmax)
 
 
 # GATv2Conv 2021 https://arxiv.org/abs/2105.14491
@@ -305,12 +385,19 @@ class GeneralConvNet(torch.nn.Module):
 #                 share_weights: bool = False)
 class GATv2ConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
-                model_dim, hidden_sf=1, out_sf=1, hidden_heads=3, use_bias=True, aggr="add"):
+                model_dim, hidden_sf=1, out_sf=1, hidden_heads=3, use_bias=True, aggr="add",
+                embedding_dim=16):
         super(GATv2ConvNet, self).__init__()
         self.layers_num = layers_num
+        self.out_dim = out_dim  # Store output dimension
+
+        self.node_embedding = torch.nn.Embedding(
+            num_embeddings=input_features,
+            embedding_dim=embedding_dim
+        )
 
         self.conv_layers = [GATv2Conv(
-                                      in_channels=input_features,
+                                      in_channels=embedding_dim,
                                       out_channels=hidden_sf * model_dim,
                                       heads=hidden_heads,
                                       bias=use_bias,
@@ -335,11 +422,17 @@ class GATv2ConvNet(torch.nn.Module):
         self.fc1 = torch.nn.Linear(out_sf * output_channels, out_dim)
 
     def forward(self, data):
+        data.x = self.node_embedding(data.x)
+
         for i in range(self.layers_num):
           data.x = self.conv_layers[i](data.x, data.edge_index)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
-        return F.log_softmax(x, dim=1)
+        # Changed for regression:
+        if self.out_dim == 1:
+            return x.squeeze(-1)  # For single-output regression, return scalar values
+        else:
+            return x  # For multi-output regression, return raw values (no softmax)
    
 
 # TransformerConv 2020 https://arxiv.org/abs/2009.03509
@@ -357,12 +450,19 @@ class GATv2ConvNet(torch.nn.Module):
 #     )
 class TransformerConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
-                model_dim, hidden_sf=1, out_sf=1, hidden_heads=3, use_bias=True, aggr="add"):
+                model_dim, hidden_sf=1, out_sf=1, hidden_heads=3, use_bias=True, aggr="add",
+                embedding_dim=16):
         super(TransformerConvNet, self).__init__()
         self.layers_num = layers_num
+        self.out_dim = out_dim  # Store output dimension
+
+        self.node_embedding = torch.nn.Embedding(
+            num_embeddings=input_features,
+            embedding_dim=embedding_dim
+        )
 
         self.conv_layers = [TransformerConv(
-                                      in_channels=input_features,
+                                      in_channels=embedding_dim,
                                       out_channels=hidden_sf * model_dim,
                                       heads=hidden_heads,
                                       bias=use_bias,
@@ -387,9 +487,14 @@ class TransformerConvNet(torch.nn.Module):
         self.fc1 = torch.nn.Linear(out_sf * output_channels, out_dim)
 
     def forward(self, data):
+        data.x = self.node_embedding(data.x)
+        
         for i in range(self.layers_num):
           data.x = self.conv_layers[i](data.x, data.edge_index)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
-        return F.log_softmax(x, dim=1)
-    
+        # Changed for regression:
+        if self.out_dim == 1:
+            return x.squeeze(-1)  # For single-output regression, return scalar values
+        else:
+            return x  # For multi-output regression, return raw values (no softmax)

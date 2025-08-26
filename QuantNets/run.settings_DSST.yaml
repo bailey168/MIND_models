@@ -1,0 +1,30 @@
+#################################################################################################################################################################################################
+######################################################################### RUN SETTINGS FOR DSST REGRESSION DATASET ######################################################################
+#################################################################################################################################################################################################
+
+# Learning rates - regression typically needs different rates than classification
+lrs:
+  dsst_custom:
+    - 0.01    # Higher learning rate to start
+    - 0.005   # Standard rate
+    - 0.001   # Lower rate for fine-tuning
+    - 0.0005  # Very low rate
+    - 0.0001  # Minimal rate
+
+# Epochs - regression may need more epochs to converge
+epochs:
+  dsst_custom:
+    - 200     # Moderate training
+    - 300     # Extended training
+    - 500     # Long training for convergence
+    - 500     # Long training for convergence
+    - 800     # Very long training
+
+# Number of runs for statistical significance
+runs:
+  dsst_custom:
+    - 5       # Good statistical sampling
+    - 5       # Good statistical sampling
+    - 3       # Fewer runs for longer training
+    - 3       # Fewer runs for longer training
+    - 3       # Fewer runs for very long training
