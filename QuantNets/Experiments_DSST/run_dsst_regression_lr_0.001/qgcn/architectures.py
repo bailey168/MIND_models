@@ -16,12 +16,10 @@ from torch_geometric.nn import GCNConv, ChebConv, GraphConv, SGConv, GENConv, Ge
 class GCNConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=5, out_sf=4, improved=True, cached=False, aggr='add',
-                embedding_dim=16, include_demographics=True, demographic_dim=5):
+                embedding_dim=16):
         super(GCNConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
-        self.include_demographics = include_demographics
-        self.demographic_dim = demographic_dim
 
         # Add embedding layer to convert node indices to dense features
         self.node_embedding = torch.nn.Embedding(
@@ -51,37 +49,16 @@ class GCNConvNet(torch.nn.Module):
                                     aggr=aggr
                                     )]
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
-
-        # Calculate final feature dimension
-        graph_features_dim = out_sf * output_channels
-        if self.include_demographics:
-            total_features_dim = graph_features_dim + self.demographic_dim
-        else:
-            total_features_dim = graph_features_dim
-
-        self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(total_features_dim, model_dim),
-            torch.nn.ReLU(),
-            torch.nn.Dropout(0.3),
-            torch.nn.Linear(model_dim, out_dim)
-        )
+        self.fc1 = torch.nn.Linear(out_sf * output_channels, out_dim)
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
 
         for i in range(self.layers_num):
-            edge_weight = data.edge_attr.squeeze(-1)
-            data.x = self.conv_layers[i](data.x, data.edge_index, edge_weight=edge_weight)
-        graph_features = global_mean_pool(data.x, data.batch)
-
-        # Concatenate with demographic features if available
-        if self.include_demographics and hasattr(data, 'demographics'):
-            combined_features = torch.cat([graph_features, data.demographics], dim=1)
-        else:
-            combined_features = graph_features
-
-        x = self.classifier(combined_features)
-
+          edge_weight = data.edge_attr.squeeze(-1)
+          data.x = self.conv_layers[i](data.x, data.edge_index, edge_weight=edge_weight)
+        data.x = global_mean_pool(data.x, data.batch)
+        x = self.fc1(data.x)
         # Changed for regression:
         if self.out_dim == 1:
             return x.squeeze(-1)  # For single-output regression, return scalar values
@@ -137,8 +114,7 @@ class ChebConvNet(torch.nn.Module):
         data.x = self.node_embedding(data.x)
 
         for i in range(self.layers_num):
-            edge_weight = data.edge_attr.squeeze(-1)
-            data.x = self.conv_layers[i](data.x, data.edge_index, edge_weight=edge_weight, batch=data.batch)
+          data.x = self.conv_layers[i](data.x, data.edge_index, batch=data.batch)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
         # Changed for regression:
@@ -158,12 +134,10 @@ class ChebConvNet(torch.nn.Module):
 class GraphConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=4, out_sf=2, bias=True, aggr='add',
-                embedding_dim=16, include_demographics=True, demographic_dim=5):
+                embedding_dim=16):
         super(GraphConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
-        self.include_demographics = include_demographics
-        self.demographic_dim = demographic_dim
 
         self.node_embedding = torch.nn.Embedding(
             num_embeddings=input_features,
@@ -189,37 +163,15 @@ class GraphConvNet(torch.nn.Module):
                                     aggr=aggr
                                     )]
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
-
-        # Calculate final feature dimension
-        graph_features_dim = out_sf * output_channels
-        if self.include_demographics:
-            total_features_dim = graph_features_dim + self.demographic_dim
-        else:
-            total_features_dim = graph_features_dim
-
-        self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(total_features_dim, model_dim),
-            torch.nn.ReLU(),
-            torch.nn.Dropout(0.3),
-            torch.nn.Linear(model_dim, out_dim)
-        )
+        self.fc1 = torch.nn.Linear(out_sf * output_channels, out_dim)
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
 
         for i in range(self.layers_num):
-            edge_weight = data.edge_attr.squeeze(-1)
-            data.x = self.conv_layers[i](data.x, data.edge_index, edge_weight=edge_weight)
-        graph_features = global_mean_pool(data.x, data.batch)
-
-        # Concatenate with demographic features if available
-        if self.include_demographics and hasattr(data, 'demographics'):
-            combined_features = torch.cat([graph_features, data.demographics], dim=1)
-        else:
-            combined_features = graph_features
-
-        x = self.classifier(combined_features)
-
+          data.x = self.conv_layers[i](data.x, data.edge_index)
+        data.x = global_mean_pool(data.x, data.batch)
+        x = self.fc1(data.x)
         # Changed for regression:
         if self.out_dim == 1:
             return x.squeeze(-1)  # For single-output regression, return scalar values
@@ -277,8 +229,7 @@ class SGConvNet(torch.nn.Module):
         data.x = self.node_embedding(data.x)
 
         for i in range(self.layers_num):
-            edge_weight = data.edge_attr.squeeze(-1)
-            data.x = self.conv_layers[i](data.x, data.edge_index, edge_weight=edge_weight)
+          data.x = self.conv_layers[i](data.x, data.edge_index)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
         # Changed for regression:
@@ -346,8 +297,7 @@ class GENConvNet(torch.nn.Module):
         data.x = self.node_embedding(data.x)
 
         for i in range(self.layers_num):
-            edge_attr = data.edge_attr
-            data.x = self.conv_layers[i](data.x, data.edge_index, edge_attr=edge_attr)
+          data.x = self.conv_layers[i](data.x, data.edge_index)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
         # Changed for regression:
@@ -411,8 +361,7 @@ class GeneralConvNet(torch.nn.Module):
         data.x = self.node_embedding(data.x)
 
         for i in range(self.layers_num):
-            edge_attr = data.edge_attr
-            data.x = self.conv_layers[i](data.x, data.edge_index, edge_attr=edge_attr)
+          data.x = self.conv_layers[i](data.x, data.edge_index)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
         # Changed for regression:
@@ -476,8 +425,7 @@ class GATv2ConvNet(torch.nn.Module):
         data.x = self.node_embedding(data.x)
 
         for i in range(self.layers_num):
-            edge_attr = data.edge_attr
-            data.x = self.conv_layers[i](data.x, data.edge_index, edge_attr=edge_attr)
+          data.x = self.conv_layers[i](data.x, data.edge_index)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
         # Changed for regression:
@@ -542,8 +490,7 @@ class TransformerConvNet(torch.nn.Module):
         data.x = self.node_embedding(data.x)
         
         for i in range(self.layers_num):
-            edge_attr = data.edge_attr
-            data.x = self.conv_layers[i](data.x, data.edge_index, edge_attr=edge_attr)
+          data.x = self.conv_layers[i](data.x, data.edge_index)
         data.x = global_mean_pool(data.x, data.batch)
         x = self.fc1(data.x)
         # Changed for regression:

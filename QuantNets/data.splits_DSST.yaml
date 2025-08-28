@@ -5,6 +5,6 @@
 # DSST data splits - adjust these numbers based on your actual dataset size
 # Format: from your create_dataset.py, you'll have train_X_test_Y directories
 dsst_custom:
-  - train: 800    # UPDATE: Replace with your actual train size
-    test: 200     # UPDATE: Replace with your actual test size  
-    batch_size: 16  # Smaller batch size for brain data
+  - train: 19420
+    test: 4855 
+    batch_size: 64

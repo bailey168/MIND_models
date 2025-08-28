@@ -4,17 +4,12 @@ import yaml
 import argparse
 from pathlib import Path
 
-# Add parent directory to sys.path
-def get_root_dir(base: str = "."):
-    if any([os.path.isdir(os.path.join(base, child_dir)) and child_dir == "qgrn" for child_dir in os.listdir(base)]):
-        return base
-    return get_root_dir(base=str(Path(base).parent.resolve()))
+# Add the current directory to sys.path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(current_dir)
 
-root_dir = get_root_dir()
-sys.path.append(root_dir)
-
-from gnn.architectures import GCNConvNet
-from experiment_regression import ExperimentRegression
+from gnn.architectures import GraphConvNet
+from experiment_regression_DSST import ExperimentRegression
 
 def load_config(config_file):
     with open(config_file, 'r') as f:
@@ -22,10 +17,10 @@ def load_config(config_file):
 
 def run_dsst_experiment():
     # Load configurations
-    datasets_config = load_config('datasets_DSST.yaml')
-    splits_config = load_config('data.splits_DSST.yaml')
-    run_config = load_config('run.settings_DSST.yaml')
-    
+    datasets_config = load_config(os.path.join(current_dir, 'datasets_DSST.yaml'))
+    splits_config = load_config(os.path.join(current_dir, 'data.splits_DSST.yaml'))
+    run_config = load_config(os.path.join(current_dir, 'run.settings_DSST.yaml'))
+
     dataset_config = datasets_config['dsst_custom']
     
     # Use first split as example
@@ -34,15 +29,17 @@ def run_dsst_experiment():
     epochs = run_config['epochs']['dsst_custom'][0]     # Use first epoch setting
     
     # Create model
-    model = GCNConvNet(
+    model = GraphConvNet(
         out_dim=dataset_config['out_dim'],
         input_features=dataset_config['in_channels'],
         output_channels=dataset_config['out_channels'],
         layers_num=dataset_config['layers_num'],
         model_dim=dataset_config['hidden_channels'],
-        hidden_sf=dataset_config['gcn_hidden_sf'],
-        out_sf=dataset_config['gcn_out_sf'],
-        embedding_dim=dataset_config['embedding_dim']
+        hidden_sf=dataset_config['graph_hidden_sf'],
+        out_sf=dataset_config['graph_out_sf'],
+        embedding_dim=dataset_config['embedding_dim'],
+        include_demographics=dataset_config['include_demographics'],
+        demographic_dim=dataset_config['demographic_dim']
     )
     
     # Setup experiment
@@ -51,7 +48,7 @@ def run_dsst_experiment():
         qgcn_model=None,
         cnn_model=None,
         optim_params={"lr": run_settings},
-        base_path=root_dir,
+        base_path=current_dir,  # Use current directory instead of root_dir
         num_train=split_config['train'],
         num_test=split_config['test'],
         dataset_name=dataset_config['dataset_name'],

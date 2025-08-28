@@ -10,17 +10,21 @@
 #     total_dataset: varies (based on your processed data)
 dsst_custom:
   dataset_group: custom
-  dataset_name: custom_dataset_selfloops_True_edgeft_None_norm_True  # From your create_dataset.py
+  dataset_name: custom_dataset_selfloops_True_edgeft_None_norm_True
   layers_num: 3
   out_dim: 1  # Single continuous output for regression
   num_sub_kernels: 7  # Reasonable default for brain connectivity
   in_channels: 21  # UPDATE: Check your actual node feature count from graph files
   embedding_dim: 16
   hidden_channels: 64
-  out_channels: 128
+  out_channels: 64
   pos_descr_dim: -1  # No positional descriptors
   edge_attr_dim: 1 
   
+  # Demographics configuration
+  include_demographics: true
+  demographic_dim: 4  # age(1) + sex(1) + assessment_centre_onehot_drop_first(2) = 4
+
   # Model specific params - optimized for regression
   # ChebConv & GraphConv
   cheb_K: 3
@@ -29,7 +33,7 @@ dsst_custom:
   graph_out_sf: 2
   graph_hidden_sf: 4
   
-  # GCNConv & QGRN - main models you'll use
+  # GCNConv & QGRN
   gcn_hidden_sf: 4
   gcn_out_sf: 2
   
