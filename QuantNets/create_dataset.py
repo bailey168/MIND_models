@@ -26,7 +26,7 @@ def load_graph_data_with_labels(data_col: str, graph_dir: str, csv_file: str) ->
 
     # Define demographic columns
     age_col = "21003-2.0"
-    sex_col = "31-2.0"
+    sex_col = "31-0.0"
     assessment_centre_col = "54-2.0"
     
     # Check if demographic columns exist
