@@ -1,4 +1,4 @@
-# DSST-specific regression experiment class
+# tailored regression experiment class
 import shutil
 import os
 import sys
