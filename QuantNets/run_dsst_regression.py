@@ -11,6 +11,8 @@ sys.path.append(current_dir)
 from gnn.architectures import GraphConvNet
 from experiment_regression_DSST import ExperimentRegression
 
+TARGET = 'DSST'
+
 def load_config(config_file):
     with open(config_file, 'r') as f:
         return yaml.safe_load(f)
@@ -38,8 +40,8 @@ def run_dsst_experiment():
         hidden_sf=dataset_config['graph_hidden_sf'],
         out_sf=dataset_config['graph_out_sf'],
         embedding_dim=dataset_config['embedding_dim'],
-        include_demographics=dataset_config['include_demographics'],
-        demographic_dim=dataset_config['demographic_dim']
+        include_demo=dataset_config['include_demo'],
+        demo_dim=dataset_config['demo_dim']
     )
     
     # Setup experiment
@@ -57,13 +59,13 @@ def run_dsst_experiment():
         train_shuffle_data=True,
         test_shuffle_data=False,
         profile_run=False,
-        id=f"dsst_regression_lr_{run_settings}"
+        id=f"{TARGET}_regression_lr_{run_settings}"
     )
     
     # Run experiment
     experiment.run(num_epochs=epochs, eval_training_set=True)
-    
-    print("DSST regression experiment completed!")
+
+    print(f"{TARGET} regression experiment completed!")
 
 if __name__ == "__main__":
     run_dsst_experiment()

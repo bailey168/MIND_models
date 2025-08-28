@@ -22,8 +22,8 @@ dsst_custom:
   edge_attr_dim: 1 
   
   # Demographics configuration
-  include_demographics: true
-  demographic_dim: 4  # age(1) + sex(1) + assessment_centre_onehot_drop_first(2) = 4
+  include_demo: True
+  demo_dim: 4  # age(1) + sex(1) + assessment_centre_onehot_drop_first(2) = 4
 
   # Model specific params - optimized for regression
   # ChebConv & GraphConv

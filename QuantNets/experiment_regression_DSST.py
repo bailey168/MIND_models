@@ -53,7 +53,7 @@ class ExperimentRegression:
         self.profile_run = profile_run
         self.walk_clock_num_runs = walk_clock_num_runs
 
-        # Load the DSST dataset from cached graph files
+        # Load the dataset from cached graph files
         data_struct = read_cached_graph_dataset(
             num_train=num_train, 
             num_test=num_test, 
@@ -64,7 +64,7 @@ class ExperimentRegression:
         # Save the references to the datasets
         self.data_struct = data_struct
         
-        # For DSST brain connectivity graphs, we don't have raw image data
+        # For brain connectivity graphs, we don't have raw image data
         # So we'll create empty datasets for CNN compatibility
         raw_train_data = []
         raw_test_data = []
@@ -77,7 +77,7 @@ class ExperimentRegression:
         geometric_sgcn_train_data = data_struct["geometric"]["sgcn_train_data"]
         geometric_sgcn_test_data  = data_struct["geometric"]["sgcn_test_data"]
 
-        print('DSST Dataset Info:')
+        print('Dataset Info:')
         print(f'Geometric qgcn dataset train: {len(geometric_qgcn_train_data)}')
         print(f'Geometric qgcn dataset test: {len(geometric_qgcn_test_data)}')
         print(f'Geometric sgcn dataset train: {len(geometric_sgcn_train_data)}')
@@ -89,7 +89,7 @@ class ExperimentRegression:
             print(f'Sample graph - Nodes: {sample_graph.num_nodes}, Edges: {sample_graph.num_edges}')
             print(f'Node features shape: {sample_graph.x.shape}')
             print(f'Edge features shape: {sample_graph.edge_attr.shape if hasattr(sample_graph, "edge_attr") else "None"}')
-            print(f'Target (DSST score): {sample_graph.y.item()}')
+            print(f'Target (score): {sample_graph.y.item()}')
 
         # Create empty raw data loaders (not used for brain connectivity)
         raw_train_loader = RawDataLoader([], batch_size=train_batch_size, shuffle=False)
@@ -154,12 +154,12 @@ class ExperimentRegression:
             self.__create_experiment_folder_structure(base_path, local_experiment_id)
 
         # Save the models
-        self.cnn_model = cnn_model  # Will be None for DSST
+        self.cnn_model = cnn_model  # Will be None for our data
         self.qgcn_model = qgcn_model
         self.sgcn_model = sgcn_model
 
-        # Assert that at least one graph model exists for DSST
-        assert any([self.qgcn_model, self.sgcn_model]), "At least one graph model (QGCN or SGCN) must be provided for DSST brain connectivity analysis"
+        # Assert that at least one graph model exists
+        assert any([self.qgcn_model, self.sgcn_model]), "At least one graph model (QGCN or SGCN) must be provided for brain connectivity analysis"
         self.cnn_model_exists = cnn_model != None
         self.qgcn_model_exists = qgcn_model != None
         self.sgcn_model_exists = sgcn_model != None
@@ -194,7 +194,7 @@ class ExperimentRegression:
             self.__print_models_stats()
 
     def __print_models_stats(self):
-        """Print model statistics for DSST brain connectivity models."""
+        """Print model statistics for brain connectivity models."""
         try:
             from flops_counter.ptflops import get_model_complexity_info
         except ImportError:
@@ -224,7 +224,7 @@ class ExperimentRegression:
                 wall_time_std = statistics.stdev(wall_times)
                 
                 print("\n-----------------")
-                print("SGCN Model Stats (DSST Brain Connectivity):")
+                print("SGCN Model Stats (Brain Connectivity):")
                 print(f"Profiling data sample: {self.data_struct['geometric']['sgcn_train_data'][max_crit_index]}")
                 print("-------------------------------------------------------------------------------------------")
                 print(f'Number of parameters: {params} k')
@@ -258,7 +258,7 @@ class ExperimentRegression:
                 wall_time_std = statistics.stdev(wall_times)
                 
                 print("\n-----------------")
-                print("QGCN Model Stats (DSST Brain Connectivity):")
+                print("QGCN Model Stats (Brain Connectivity):")
                 print(f"Profiling data sample: {self.data_struct['geometric']['qgcn_train_data'][max_crit_index]}")
                 print("-------------------------------------------------------------------------------------------")
                 print(f'Number of parameters: {params} k')
@@ -274,7 +274,7 @@ class ExperimentRegression:
         if not os.path.exists(base_path):
             print("Ensure that your base path exists -> {}".format(base_path))
             sys.exit(1)
-        experiments_dir = os.path.join(base_path, "Experiments_DSST")
+        experiments_dir = os.path.join(base_path, "Experiments_FC")
         if not os.path.exists(experiments_dir):
             os.mkdir(experiments_dir)
         underscored_experiment_id = "_".join(str(experiment_id).strip().split(" "))
@@ -468,7 +468,7 @@ class ExperimentRegression:
         train_qgcn_mse_array, train_sgcn_mse_array = [], []
         train_qgcn_loss_array, train_sgcn_loss_array = [], []
         
-        print("Starting DSST Brain Connectivity Regression Training...")
+        print("Starting Brain Connectivity Regression Training...")
         print(f"Training for {num_epochs} epochs")
         print(f"Models: QGCN={self.qgcn_model_exists}, SGCN={self.sgcn_model_exists}")
         
@@ -511,7 +511,7 @@ class ExperimentRegression:
                 test_qgcn_mse_array, test_sgcn_mse_array
             )
             
-        print("DSST Brain Connectivity Regression Training Complete!")
+        print("Brain Connectivity Regression Training Complete!")
         return {
             'train_qgcn_loss': train_qgcn_loss_array,
             'train_sgcn_loss': train_sgcn_loss_array,

@@ -104,10 +104,10 @@ def process_demographics(data_list, age_scaler, assessment_centre_encoder):
         assessment_centre_onehot = assessment_centre_encoder.transform([[item['assessment_centre']]])[0]
 
         # Combine demographic features
-        demographic_features = np.concatenate([age_scaled, sex, assessment_centre_onehot])
+        demo_features = np.concatenate([age_scaled, sex, assessment_centre_onehot])
 
         # Add demographic to graph data
-        graph_data.demographics = torch.tensor(demographic_features, dtype=torch.float32).unsqueeze(0)
+        graph_data.demographics = torch.tensor(demo_features, dtype=torch.float32).unsqueeze(0)
 
         processed_data.append(graph_data)
 
