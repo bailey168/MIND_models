@@ -183,15 +183,67 @@ class ExperimentRegression:
         self.sgcn_model_optimizer = None
         
         if self.cnn_model_exists:
-            self.cnn_model_optimizer = torch.optim.Adam(self.cnn_model.parameters(), lr=learning_rate)
+            self.cnn_model_optimizer = torch.optim.AdamW(self.cnn_model.parameters(), lr=learning_rate, weight_decay=0.0001)
         if self.qgcn_model_exists:
-            self.qgcn_model_optimizer = torch.optim.Adam(self.qgcn_model.parameters(), lr=learning_rate)
+            self.qgcn_model_optimizer = torch.optim.AdamW(self.qgcn_model.parameters(), lr=learning_rate, weight_decay=0.0001)
         if self.sgcn_model_exists:
-            self.sgcn_model_optimizer = torch.optim.Adam(self.sgcn_model.parameters(), lr=learning_rate)
+            self.sgcn_model_optimizer = torch.optim.AdamW(self.sgcn_model.parameters(), lr=learning_rate, weight_decay=0.0001)
+
+        # Add learning rate schedulers
+        self.cnn_model_scheduler = None
+        self.qgcn_model_scheduler = None
+        self.sgcn_model_scheduler = None
+        
+        # Configure schedulers based on optim_params
+        scheduler_type = optim_params.get("scheduler", "step") if optim_params else "step"
+        scheduler_params = optim_params.get("scheduler_params", {}) if optim_params else {}
+        
+        if self.cnn_model_exists:
+            self.cnn_model_scheduler = self._create_scheduler(self.cnn_model_optimizer, scheduler_type, scheduler_params)
+        if self.qgcn_model_exists:
+            self.qgcn_model_scheduler = self._create_scheduler(self.qgcn_model_optimizer, scheduler_type, scheduler_params)
+        if self.sgcn_model_exists:
+            self.sgcn_model_scheduler = self._create_scheduler(self.sgcn_model_optimizer, scheduler_type, scheduler_params)
 
         # Print model statistics if profiling
         if self.profile_run: 
             self.__print_models_stats()
+
+    def _create_scheduler(self, optimizer, scheduler_type, scheduler_params):
+        """Create learning rate scheduler based on configuration."""
+        if scheduler_type == "step":
+            return torch.optim.lr_scheduler.StepLR(
+                optimizer,
+                step_size=scheduler_params.get("step_size", 100),
+                gamma=scheduler_params.get("gamma", 0.5)
+            )
+        elif scheduler_type == "multistep":
+            return torch.optim.lr_scheduler.MultiStepLR(
+                optimizer,
+                milestones=scheduler_params.get("milestones", [150, 300]),
+                gamma=scheduler_params.get("gamma", 0.1)
+            )
+        elif scheduler_type == "exponential":
+            return torch.optim.lr_scheduler.ExponentialLR(
+                optimizer,
+                gamma=scheduler_params.get("gamma", 0.95)
+            )
+        elif scheduler_type == "cosine":
+            return torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer,
+                T_max=scheduler_params.get("T_max", 500),
+                eta_min=scheduler_params.get("eta_min", 1e-6)
+            )
+        elif scheduler_type == "plateau":
+            return torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer,
+                mode='min',
+                factor=scheduler_params.get("factor", 0.5),
+                patience=scheduler_params.get("patience", 10),
+                min_lr=scheduler_params.get("min_lr", 1e-6)
+            )
+        else:
+            return None
 
     def __print_models_stats(self):
         """Print model statistics for brain connectivity models."""
@@ -318,7 +370,8 @@ class ExperimentRegression:
 
     def __cache_results(self, train_qgcn_loss_array, train_sgcn_loss_array, 
                         train_qgcn_mse_array, train_sgcn_mse_array,
-                        test_qgcn_mse_array, test_sgcn_mse_array):
+                        test_qgcn_mse_array, test_sgcn_mse_array,
+                        learning_rates_qgcn=None, learning_rates_sgcn=None):
         """Save training results to disk."""
         if self.qgcn_specific_run_dir != None and self.qgcn_model_exists:
             train_qgcn_loss_filepath = os.path.join(self.qgcn_specific_run_dir, "train_loss.pk")
@@ -330,6 +383,10 @@ class ExperimentRegression:
                 pickle.dump(train_qgcn_mse_array, f)
             with open(test_qgcn_mse_filepath, 'wb') as f:
                 pickle.dump(test_qgcn_mse_array, f)
+            if learning_rates_qgcn is not None:
+                lr_qgcn_filepath = os.path.join(self.qgcn_specific_run_dir, "learning_rates.pk")
+                with open(lr_qgcn_filepath, 'wb') as f:
+                    pickle.dump(learning_rates_qgcn, f)
         
         if self.sgcn_specific_run_dir != None and self.sgcn_model_exists:
             train_sgcn_loss_filepath = os.path.join(self.sgcn_specific_run_dir, "train_loss.pk")
@@ -341,6 +398,10 @@ class ExperimentRegression:
                 pickle.dump(train_sgcn_mse_array, f)
             with open(test_sgcn_mse_filepath, 'wb') as f:
                 pickle.dump(test_sgcn_mse_array, f)
+            if learning_rates_sgcn is not None:
+                lr_sgcn_filepath = os.path.join(self.sgcn_specific_run_dir, "learning_rates.pk")
+                with open(lr_sgcn_filepath, 'wb') as f:
+                    pickle.dump(learning_rates_sgcn, f)
 
     def __move_graph_data_to_device(self, data):
         """Move graph data to target device."""
@@ -467,6 +528,7 @@ class ExperimentRegression:
         test_qgcn_mse_array, test_sgcn_mse_array = [], []
         train_qgcn_mse_array, train_sgcn_mse_array = [], []
         train_qgcn_loss_array, train_sgcn_loss_array = [], []
+        learning_rates_qgcn, learning_rates_sgcn = [], []
         
         print("Starting Brain Connectivity Regression Training...")
         print(f"Training for {num_epochs} epochs")
@@ -491,6 +553,26 @@ class ExperimentRegression:
             test_qgcn_mse_array.append(test_qgcn_mse)
             test_sgcn_mse_array.append(test_sgcn_mse)
             
+            # Step schedulers and record learning rates
+            current_lr_qgcn, current_lr_sgcn = 0, 0
+            
+            if self.qgcn_model_scheduler is not None:
+                if isinstance(self.qgcn_model_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                    self.qgcn_model_scheduler.step(test_qgcn_mse)
+                else:
+                    self.qgcn_model_scheduler.step()
+                current_lr_qgcn = self.qgcn_model_optimizer.param_groups[0]['lr']
+            
+            if self.sgcn_model_scheduler is not None:
+                if isinstance(self.sgcn_model_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                    self.sgcn_model_scheduler.step(test_sgcn_mse)
+                else:
+                    self.sgcn_model_scheduler.step()
+                current_lr_sgcn = self.sgcn_model_optimizer.param_groups[0]['lr']
+            
+            learning_rates_qgcn.append(current_lr_qgcn)
+            learning_rates_sgcn.append(current_lr_sgcn)
+            
             stop_time = time.time()
 
             # Build the display string
@@ -498,9 +580,10 @@ class ExperimentRegression:
             loss_str = "QGCN_Loss: {:.5f}, SGCN_Loss: {:.5f}, ".format(qgcn_loss, sgcn_loss)
             train_mse_str = "QGCN_Train_MSE: {:.5f}, SGCN_Train_MSE: {:.5f}, ".format(train_qgcn_mse, train_sgcn_mse)
             test_mse_str = "QGCN_Test_MSE: {:.5f}, SGCN_Test_MSE: {:.5f}, ".format(test_qgcn_mse, test_sgcn_mse)
+            lr_str = "QGCN_LR: {:.2e}, SGCN_LR: {:.2e}".format(current_lr_qgcn, current_lr_sgcn)
             
             # Print out the results
-            print("{}".format("".join([epoch_str, loss_str, train_mse_str, test_mse_str])))
+            print("{}".format("".join([epoch_str, loss_str, train_mse_str, test_mse_str, lr_str])))
             print(f"Epoch took a total of {stop_time - start_time}s")
 
         # Cache results if we need to
@@ -508,7 +591,8 @@ class ExperimentRegression:
             self.__cache_results(
                 train_qgcn_loss_array, train_sgcn_loss_array,
                 train_qgcn_mse_array, train_sgcn_mse_array,
-                test_qgcn_mse_array, test_sgcn_mse_array
+                test_qgcn_mse_array, test_sgcn_mse_array,
+                learning_rates_qgcn, learning_rates_sgcn
             )
             
         print("Brain Connectivity Regression Training Complete!")
@@ -518,7 +602,9 @@ class ExperimentRegression:
             'train_qgcn_mse': train_qgcn_mse_array,
             'train_sgcn_mse': train_sgcn_mse_array,
             'test_qgcn_mse': test_qgcn_mse_array,
-            'test_sgcn_mse': test_sgcn_mse_array
+            'test_sgcn_mse': test_sgcn_mse_array,
+            'learning_rates_qgcn': learning_rates_qgcn,
+            'learning_rates_sgcn': learning_rates_sgcn
         }
 
     # Static method for plotting results

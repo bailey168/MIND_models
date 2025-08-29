@@ -11,7 +11,7 @@ sys.path.append(current_dir)
 from gnn.architectures import GraphConvNet
 from experiment_regression_DSST import ExperimentRegression
 
-TARGET = 'DSST'
+TARGET = 'GF'
 
 def load_config(config_file):
     with open(config_file, 'r') as f:
@@ -26,9 +26,12 @@ def run_dsst_experiment():
     dataset_config = datasets_config['dsst_custom']
     
     # Use first split as example
-    split_config = splits_config['dsst_custom'][0]
+    split_config = splits_config['gf_custom'][0]
     run_settings = run_config['lrs']['dsst_custom'][0]  # Use first learning rate
     epochs = run_config['epochs']['dsst_custom'][0]     # Use first epoch setting
+    
+    # Get scheduler configuration (if available)
+    scheduler_config = run_config.get('schedulers', {}).get('dsst_custom', [{}])[0]
     
     # Create model
     model = GraphConvNet(
@@ -44,12 +47,16 @@ def run_dsst_experiment():
         demo_dim=dataset_config['demo_dim']
     )
     
+    # Prepare optimizer parameters with scheduler
+    optim_params = {"lr": run_settings}
+    optim_params.update(scheduler_config)
+    
     # Setup experiment
     experiment = ExperimentRegression(
         sgcn_model=model,  # Using sgcn_model parameter for GCN
         qgcn_model=None,
         cnn_model=None,
-        optim_params={"lr": run_settings},
+        optim_params=optim_params,
         base_path=current_dir,  # Use current directory instead of root_dir
         num_train=split_config['train'],
         num_test=split_config['test'],
@@ -59,7 +66,7 @@ def run_dsst_experiment():
         train_shuffle_data=True,
         test_shuffle_data=False,
         profile_run=False,
-        id=f"{TARGET}_regression_lr_{run_settings}"
+        id=f"{TARGET}_regression_lr_{run_settings}_scheduler_{scheduler_config.get('scheduler', 'none')}"
     )
     
     # Run experiment
