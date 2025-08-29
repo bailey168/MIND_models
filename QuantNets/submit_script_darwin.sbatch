@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=create_dataset_GF30_08_28
-#SBATCH --output=/scratch/bng/cartbind/data/logs/graph_logs/create_dataset_GF30_08_28_%J.out
-#SBATCH --error=/scratch/bng/cartbind/data/logs/graph_logs/create_dataset_GF30_08_28_%J.err
+#SBATCH --job-name=training_ids_08_29
+#SBATCH --output=/scratch/bng/cartbind/data/logs/graph_logs/training_ids_08_29_%J.out
+#SBATCH --error=/scratch/bng/cartbind/data/logs/graph_logs/training_ids_08_29_%J.err
 #SBATCH --time=2:00:00
 #SBATCH --mem-per-cpu=1G
 #SBATCH --cpus-per-task=12
@@ -10,4 +10,4 @@
 
 source /scratch/bng/cartbind/data/darwin/bin/activate
 
-python3 -u /scratch/bng/cartbind/code/MIND_models/QuantNets/create_dataset.py
+python3 -u /scratch/bng/cartbind/code/MIND_models/QuantNets/training_ids.py

@@ -39,7 +39,7 @@ def load_graph_data_with_labels(data_col: str, graph_dir: str, csv_file: str) ->
     # Find all graph files
     graph_files = []
     for file in os.listdir(graph_dir):
-        if file.endswith('_25752_2_0_fc_graph.pt'):
+        if file.endswith('_fc_graph.pt'):  # Updated to match your naming
             graph_files.append(file)
     
     print(f"Found {len(graph_files)} graph files")
@@ -49,7 +49,7 @@ def load_graph_data_with_labels(data_col: str, graph_dir: str, csv_file: str) ->
     unmatched_eids = []
     
     for file in graph_files:
-        # Extract eid from filename
+        # Extract eid from filename (first 17 characters)
         eid = int(file.split('_')[0])
         
         # Find matching row in dataframe
