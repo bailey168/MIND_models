@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # keep header from file1
-head -n 1 FS_ID.csv > freesurfer2_unloaded.csv
+head -n 1 FS_ID.csv > freesurfer2_unloaded2.csv
 
 # append ONLY lines from file1 whose (first 8 chars + last 5 chars) are NOT in file2
 awk '
@@ -25,4 +25,4 @@ awk '
       if (!((p,s) in seen)) print
     }
   }
-' freesurfer2_loaded.csv FS_ID.csv >> freesurfer2_unloaded.csv
+' freesurfer2_loaded2.csv FS_ID.csv >> freesurfer2_unloaded2.csv
