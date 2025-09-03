@@ -417,6 +417,8 @@ class ExperimentRegression:
             data.batch = data.batch.to(self.device)
         if hasattr(data, 'edge_attr') and data.edge_attr is not None:
             data.edge_attr = data.edge_attr.to(self.device)
+        if hasattr(data, 'demographics') and data.demographics is not None:
+            data.demographics = data.demographics.to(self.device)
         return data
 
     def __train(self):
