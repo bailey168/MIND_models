@@ -11,13 +11,13 @@
 dsst_custom:
   dataset_group: custom
   dataset_name: custom_dataset_selfloops_True_edgeft_None_norm_True
-  layers_num: 3
+  layers_num: 4
   out_dim: 1  # Single continuous output for regression
   num_sub_kernels: 7  # Reasonable default for brain connectivity
   in_channels: 21  # UPDATE: Check your actual node feature count from graph files
   embedding_dim: 16
-  hidden_channels: 64
-  out_channels: 64
+  hidden_channels: 128
+  out_channels: 128
   pos_descr_dim: -1  # No positional descriptors
   edge_attr_dim: 1 
   

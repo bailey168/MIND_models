@@ -66,7 +66,7 @@ def run_dsst_experiment():
         train_shuffle_data=True,
         test_shuffle_data=False,
         profile_run=False,
-        id=f"{TARGET}_regression_lr_{run_settings}_scheduler_{scheduler_config.get('scheduler', 'none')}"
+        id=f"{TARGET}_scc_std_regression_lr_{run_settings}_scheduler_{scheduler_config.get('scheduler', 'none')}"
     )
     
     # Run experiment
