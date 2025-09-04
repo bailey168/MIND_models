@@ -2,7 +2,7 @@
 #SBATCH --job-name=MIND_processing_09_04
 #SBATCH --output=/scratch/p/pz249/baileyng/logs/MIND_processing_09_04_%J.out
 #SBATCH --error=/scratch/p/pz249/baileyng/logs/MIND_processing_09_04_%J.err
-#SBATCH --time=02:00:00
+#SBATCH --time=00:20:00
 #SBATCH --cpus-per-task=1
 #SBATCH --nodes=1
 #SBATCH --array=0-999
