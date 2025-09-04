@@ -1,16 +1,16 @@
 #!/bin/bash
-#SBATCH --job-name=MIND_processing2_09_04
-#SBATCH --output=/scratch/p/pz249/baileyng/logs/MIND_processing2_09_04_%J.out
-#SBATCH --error=/scratch/p/pz249/baileyng/logs/MIND_processing2_09_04_%J.err
+#SBATCH --job-name=MIND_processing3_09_04
+#SBATCH --output=/scratch/p/pz249/baileyng/logs/MIND_processing3_09_04_%J.out
+#SBATCH --error=/scratch/p/pz249/baileyng/logs/MIND_processing3_09_04_%J.err
 #SBATCH --time=00:20:00
 #SBATCH --cpus-per-task=1
 #SBATCH --nodes=1
-#SBATCH --array=0-999
+#SBATCH --array=0-680
 
 module load python/3.8.5
 source /home/p/pz249/baileyng/mind_env/bin/activate
 
-PATHS_FILE=/home/p/pz249/baileyng/MIND_models/OASIS/FS2_paths2.loc
+PATHS_FILE=/home/p/pz249/baileyng/MIND_models/OASIS/FS2_paths3.loc
 OUTPUT_DIR=/scratch/p/pz249/baileyng/OASIS_data/MIND/full
 PARCELLATION=aparc
 
