@@ -5,50 +5,22 @@
 # Learning rates - regression typically needs different rates than classification
 lrs:
   dsst_custom:
-    - 0.1 
-    - 0.01 
-    - 0.005 
-    - 0.001 
     - 0.0001
 
 # Epochs - regression may need more epochs to converge
 epochs:
   dsst_custom:
-    - 500     # Moderate training
-    - 500
-    - 500
-    - 500
     - 500
 
 # Number of runs for statistical significance
 runs:
   dsst_custom:
-    - 3       # Good statistical sampling
-    - 3
-    - 3
-    - 3
     - 3
 
 # Learning rate scheduler configurations
 schedulers:
   dsst_custom:
     # StepLR: Decay LR by gamma every step_size epochs
-    - scheduler: "step"
-      scheduler_params:
-        step_size: 50
-        gamma: 0.5
-    - scheduler: "step"
-      scheduler_params:
-        step_size: 50
-        gamma: 0.5
-    - scheduler: "step"
-      scheduler_params:
-        step_size: 50
-        gamma: 0.5
-    - scheduler: "step"
-      scheduler_params:
-        step_size: 50
-        gamma: 0.5
     - scheduler: "step"
       scheduler_params:
         step_size: 50
