@@ -60,9 +60,14 @@ class GCNConvNet(torch.nn.Module):
             total_features_dim = graph_features_dim
 
         self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(total_features_dim, model_dim),
+            torch.nn.Linear(total_features_dim, model_dim * 2),
+            torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
+            torch.nn.Linear(model_dim * 2, model_dim),
+            torch.nn.BatchNorm1d(model_dim),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -142,9 +147,14 @@ class ChebConvNet(torch.nn.Module):
             total_features_dim = graph_features_dim
 
         self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(total_features_dim, model_dim),
+            torch.nn.Linear(total_features_dim, model_dim * 2),
+            torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
+            torch.nn.Linear(model_dim * 2, model_dim),
+            torch.nn.BatchNorm1d(model_dim),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -213,6 +223,11 @@ class GraphConvNet(torch.nn.Module):
                                     )]
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
+        # Add batch normalization layers
+        self.batch_norms = torch.nn.ModuleList([
+            torch.nn.BatchNorm1d(hidden_sf * model_dim) for _ in range(layers_num - 1)
+        ] + [torch.nn.BatchNorm1d(out_sf * output_channels)])
+
         # Calculate final feature dimension
         graph_features_dim = out_sf * output_channels
         if self.include_demo:
@@ -221,7 +236,12 @@ class GraphConvNet(torch.nn.Module):
             total_features_dim = graph_features_dim
 
         self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(total_features_dim, model_dim),
+            torch.nn.Linear(total_features_dim, model_dim * 2),
+            torch.nn.BatchNorm1d(model_dim * 2),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.3),
+            torch.nn.Linear(model_dim * 2, model_dim),
+            torch.nn.BatchNorm1d(model_dim),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
             torch.nn.Linear(model_dim, out_dim)
@@ -233,6 +253,11 @@ class GraphConvNet(torch.nn.Module):
         for i in range(self.layers_num):
             edge_weight = data.edge_attr.squeeze(-1)
             data.x = self.conv_layers[i](data.x, data.edge_index, edge_weight=edge_weight)
+            data.x = self.batch_norms[i](data.x)
+            # Apply ReLU activation (except for the last layer)
+            if i < self.layers_num - 1:
+                data.x = torch.nn.functional.relu(data.x)
+
         graph_features = global_mean_pool(data.x, data.batch)
 
         # Concatenate with demographic features if available
@@ -305,9 +330,14 @@ class SGConvNet(torch.nn.Module):
             total_features_dim = graph_features_dim
 
         self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(total_features_dim, model_dim),
+            torch.nn.Linear(total_features_dim, model_dim * 2),
+            torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
+            torch.nn.Linear(model_dim * 2, model_dim),
+            torch.nn.BatchNorm1d(model_dim),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -397,9 +427,14 @@ class GENConvNet(torch.nn.Module):
             total_features_dim = graph_features_dim
 
         self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(total_features_dim, model_dim),
+            torch.nn.Linear(total_features_dim, model_dim * 2),
+            torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
+            torch.nn.Linear(model_dim * 2, model_dim),
+            torch.nn.BatchNorm1d(model_dim),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -485,9 +520,14 @@ class GeneralConvNet(torch.nn.Module):
             total_features_dim = graph_features_dim
 
         self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(total_features_dim, model_dim),
+            torch.nn.Linear(total_features_dim, model_dim * 2),
+            torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
+            torch.nn.Linear(model_dim * 2, model_dim),
+            torch.nn.BatchNorm1d(model_dim),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -573,9 +613,14 @@ class GATv2ConvNet(torch.nn.Module):
             total_features_dim = graph_features_dim
 
         self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(total_features_dim, model_dim),
+            torch.nn.Linear(total_features_dim, model_dim * 2),
+            torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
+            torch.nn.Linear(model_dim * 2, model_dim),
+            torch.nn.BatchNorm1d(model_dim),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -662,9 +707,14 @@ class TransformerConvNet(torch.nn.Module):
             total_features_dim = graph_features_dim
 
         self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(total_features_dim, model_dim),
+            torch.nn.Linear(total_features_dim, model_dim * 2),
+            torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
+            torch.nn.Linear(model_dim * 2, model_dim),
+            torch.nn.BatchNorm1d(model_dim),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 
