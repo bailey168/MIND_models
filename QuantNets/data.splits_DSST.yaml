@@ -25,15 +25,3 @@ gf_custom:
   - train: 27181
     test: 6796 
     batch_size: 64
-  - train: 27181
-    test: 6796 
-    batch_size: 64
-  - train: 27181
-    test: 6796 
-    batch_size: 64
-  - train: 27181
-    test: 6796 
-    batch_size: 64
-  - train: 27181
-    test: 6796 
-    batch_size: 64
