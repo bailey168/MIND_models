@@ -8,16 +8,16 @@
 #     node_features: varies (will depend on your graph processing)
 #     pos_exists: False (brain connectivity graphs typically don't use positional features)
 #     total_dataset: varies (based on your processed data)
-dsst_custom:
+gf_custom:
   dataset_group: custom
   dataset_name: custom_dataset_selfloops_True_edgeft_None_norm_True
-  layers_num: 4
+  layers_num: 3
   out_dim: 1  # Single continuous output for regression
   num_sub_kernels: 7  # Reasonable default for brain connectivity
   in_channels: 21  # UPDATE: Check your actual node feature count from graph files
   embedding_dim: 16
-  hidden_channels: 128
-  out_channels: 128
+  hidden_channels: 32
+  out_channels: 32
   pos_descr_dim: -1  # No positional descriptors
   edge_attr_dim: 1 
   
@@ -31,7 +31,7 @@ dsst_custom:
   cheb_out_sf: 2
   cheb_hidden_sf: 4
   graph_out_sf: 2
-  graph_hidden_sf: 4
+  graph_hidden_sf: 1
   
   # GCNConv & QGRN
   gcn_hidden_sf: 4

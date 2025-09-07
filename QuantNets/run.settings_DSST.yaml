@@ -6,20 +6,32 @@
 lrs:
   dsst_custom:
     - 0.0001
+  gf_custom:
+    - 0.0001
 
 # Epochs - regression may need more epochs to converge
 epochs:
   dsst_custom:
+    - 500
+  gf_custom:
     - 500
 
 # Number of runs for statistical significance
 runs:
   dsst_custom:
     - 3
+  gf_custom:
+    - 3
 
 # Learning rate scheduler configurations
 schedulers:
   dsst_custom:
+    # StepLR: Decay LR by gamma every step_size epochs
+    - scheduler: "step"
+      scheduler_params:
+        step_size: 50
+        gamma: 0.5
+  gf_custom:
     # StepLR: Decay LR by gamma every step_size epochs
     - scheduler: "step"
       scheduler_params:

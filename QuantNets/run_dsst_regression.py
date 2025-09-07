@@ -2,7 +2,19 @@ import os
 import sys
 import yaml
 import argparse
+import random
+import numpy as np
+import torch
 from pathlib import Path
+
+# Set seed for reproducibility
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 # Add the current directory to sys.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -83,14 +95,14 @@ def run_all_dsst_experiments():
     splits_config = load_config(os.path.join(current_dir, 'data.splits_DSST.yaml'))
     run_config = load_config(os.path.join(current_dir, 'run.settings_DSST.yaml'))
 
-    dataset_config = datasets_config['dsst_custom']
+    dataset_config = datasets_config['gf_custom']
     
     # Get all configurations
     splits = splits_config['gf_custom']
-    learning_rates = run_config['lrs']['dsst_custom']
-    epochs_list = run_config['epochs']['dsst_custom']
-    schedulers = run_config.get('schedulers', {}).get('dsst_custom', [{}] * len(learning_rates))
-    
+    learning_rates = run_config['lrs']['gf_custom']
+    epochs_list = run_config['epochs']['gf_custom']
+    schedulers = run_config.get('schedulers', {}).get('gf_custom', [{}] * len(learning_rates))
+
     # Validate that all lists have the same length
     config_lengths = [len(splits), len(learning_rates), len(epochs_list), len(schedulers)]
     if len(set(config_lengths)) > 1:
@@ -163,14 +175,14 @@ def run_specific_experiments(config_indices):
     splits_config = load_config(os.path.join(current_dir, 'data.splits_DSST.yaml'))
     run_config = load_config(os.path.join(current_dir, 'run.settings_DSST.yaml'))
 
-    dataset_config = datasets_config['dsst_custom']
+    dataset_config = datasets_config['gf_custom']
     
     # Get all configurations
     splits = splits_config['gf_custom']
-    learning_rates = run_config['lrs']['dsst_custom']
-    epochs_list = run_config['epochs']['dsst_custom']
-    schedulers = run_config.get('schedulers', {}).get('dsst_custom', [{}] * len(learning_rates))
-    
+    learning_rates = run_config['lrs']['gf_custom']
+    epochs_list = run_config['epochs']['gf_custom']
+    schedulers = run_config.get('schedulers', {}).get('gf_custom', [{}] * len(learning_rates))
+
     results = []
     
     for i in config_indices:
@@ -195,7 +207,7 @@ def run_specific_experiments(config_indices):
     return results
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run DSST regression experiments")
+    parser = argparse.ArgumentParser(description="Run regression experiments")
     parser.add_argument("--config", type=int, nargs='+', 
                       help="Specific configuration indices to run (0-based). If not provided, runs all configs.")
     parser.add_argument("--list-configs", action="store_true", 
@@ -209,10 +221,10 @@ if __name__ == "__main__":
         run_config = load_config(os.path.join(current_dir, 'run.settings_DSST.yaml'))
         
         splits = splits_config['gf_custom']
-        learning_rates = run_config['lrs']['dsst_custom']
-        epochs_list = run_config['epochs']['dsst_custom']
-        schedulers = run_config.get('schedulers', {}).get('dsst_custom', [{}] * len(learning_rates))
-        
+        learning_rates = run_config['lrs']['gf_custom']
+        epochs_list = run_config['epochs']['gf_custom']
+        schedulers = run_config.get('schedulers', {}).get('gf_custom', [{}] * len(learning_rates))
+
         print("Available configurations:")
         print(f"{'Index':<8} {'LR':<10} {'Epochs':<8} {'Train':<8} {'Test':<8} {'Scheduler':<12}")
         print("-" * 70)
