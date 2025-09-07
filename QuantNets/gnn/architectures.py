@@ -46,9 +46,12 @@ class GraphConvNet(torch.nn.Module):
                                     )]
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
-        # Add batch normalization layers
+        # Add batch normalization and activation layers
         self.batch_norms = torch.nn.ModuleList([
             torch.nn.BatchNorm1d(hidden_sf * model_dim) for _ in range(layers_num - 1)
+        ])
+        self.activations = torch.nn.ModuleList([
+            torch.nn.LeakyReLU() for _ in range(layers_num - 1)
         ])
 
         # Calculate final feature dimension
@@ -63,11 +66,11 @@ class GraphConvNet(torch.nn.Module):
         self.classifier = torch.nn.Sequential(
             torch.nn.Linear(total_features_dim, model_dim * 2),
             torch.nn.BatchNorm1d(model_dim * 2),
-            torch.nn.ReLU(),
+            torch.nn.LeakyReLU(),
             torch.nn.Dropout(0.3),
             torch.nn.Linear(model_dim * 2, model_dim),
             torch.nn.BatchNorm1d(model_dim),
-            torch.nn.ReLU(),
+            torch.nn.LeakyReLU(),
             torch.nn.Dropout(0.3),
             torch.nn.Linear(model_dim, out_dim)
         )
@@ -81,7 +84,7 @@ class GraphConvNet(torch.nn.Module):
 
             if i < self.layers_num - 1:
                 data.x = self.batch_norms[i](data.x)
-                data.x = F.leaky_relu(data.x)
+                data.x = self.activations[i](data.x)
 
         graph_features = global_mean_pool(data.x, data.batch)
 

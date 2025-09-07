@@ -227,7 +227,7 @@ def main():
     if not os.path.exists(model_path):
         print(f"Model not found at {model_path}")
         print("Available experiments:")
-        experiments_dir = os.path.join(base_path, "Experiments_FC")
+        experiments_dir = os.path.join(base_path, "Experiments_FC_change_arch")
         if os.path.exists(experiments_dir):
             for exp in os.listdir(experiments_dir):
                 exp_path = os.path.join(experiments_dir, exp)
