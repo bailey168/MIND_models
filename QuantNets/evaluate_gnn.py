@@ -221,7 +221,7 @@ def main():
     
     # Example: evaluate SGCN model
     experiment_id = "GF_regression_config_1_lr_0.0001_epochs_500_scheduler_step"  # Update this to match your experiment
-    model_path = os.path.join(base_path, "Experiments_FC", f"run_{experiment_id}", "sgcn", "model.pth")
+    model_path = os.path.join(base_path, "Experiments_FC_change_arch", f"run_{experiment_id}", "sgcn", "model.pth")
     
     # Check if model exists
     if not os.path.exists(model_path):

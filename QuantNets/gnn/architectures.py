@@ -28,19 +28,19 @@ class GraphConvNet(torch.nn.Module):
 
         self.conv_layers = [GraphConv(
                                     in_channels=embedding_dim,
-                                    out_channels=hidden_sf * model_dim,
+                                    out_channels=1 * model_dim,
                                     bias=bias,
                                     aggr=aggr
                                     )] + \
                            [GraphConv(
-                                    in_channels=hidden_sf * model_dim,
-                                    out_channels=hidden_sf * model_dim,
+                                    in_channels=1 * model_dim,
+                                    out_channels=2 * model_dim,
                                     bias=bias,
                                     aggr=aggr
-                                    ) for _ in range(layers_num - 2)] + \
+                                    )] + \
                            [GraphConv(
-                                    in_channels=hidden_sf * model_dim,
-                                    out_channels=out_sf * output_channels,
+                                    in_channels=2 * model_dim,
+                                    out_channels=4 * model_dim,
                                     bias=bias,
                                     aggr=aggr
                                     )]
@@ -48,18 +48,20 @@ class GraphConvNet(torch.nn.Module):
 
         # Add batch normalization and activation layers
         self.batch_norms = torch.nn.ModuleList([
-            torch.nn.BatchNorm1d(hidden_sf * model_dim) for _ in range(layers_num - 1)
+            torch.nn.BatchNorm1d(1 * model_dim),
+            torch.nn.BatchNorm1d(2 * model_dim)
         ])
         self.activations = torch.nn.ModuleList([
-            torch.nn.LeakyReLU() for _ in range(layers_num - 1)
+            torch.nn.LeakyReLU(),
+            torch.nn.LeakyReLU()
         ])
 
         # Calculate final feature dimension
-        graph_features_dim = out_sf * output_channels
+        graph_features_dim = 4 * model_dim
 
         if self.include_demo:
-            self.demo_projection = torch.nn.Linear(self.demo_dim, graph_features_dim)
-            total_features_dim = graph_features_dim * 2
+            self.demo_projection = torch.nn.Linear(self.demo_dim, 16)
+            total_features_dim = graph_features_dim + 16
         else:
             total_features_dim = graph_features_dim
 
@@ -67,11 +69,11 @@ class GraphConvNet(torch.nn.Module):
             torch.nn.Linear(total_features_dim, model_dim * 2),
             torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.LeakyReLU(),
-            torch.nn.Dropout(0.3),
+            torch.nn.Dropout(0.1),
             torch.nn.Linear(model_dim * 2, model_dim),
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.LeakyReLU(),
-            torch.nn.Dropout(0.3),
+            torch.nn.Dropout(0.1),
             torch.nn.Linear(model_dim, out_dim)
         )
 
