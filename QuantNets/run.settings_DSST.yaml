@@ -14,7 +14,7 @@ epochs:
   dsst_custom:
     - 500
   gf_custom:
-    - 497
+    - 496
 
 # Number of runs for statistical significance
 runs:

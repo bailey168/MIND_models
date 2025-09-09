@@ -20,7 +20,7 @@ torch.backends.cudnn.benchmark = False
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
 
-from gnn.architectures import GraphConvNet
+from gnn.architectures import GraphConvNet, GATv2ConvNet
 from experiment_regression_DSST import ExperimentRegression
 
 TARGET = 'GF'
@@ -29,11 +29,44 @@ def load_config(config_file):
     with open(config_file, 'r') as f:
         return yaml.safe_load(f)
 
-def run_single_experiment(dataset_config, split_config, run_settings, epochs, scheduler_config, config_idx):
+def create_model(model_type, dataset_config):
+    """Create model based on type specification."""
+    if model_type == 'GraphConv':
+        return GraphConvNet(
+            out_dim=dataset_config['out_dim'],
+            input_features=dataset_config['in_channels'],
+            output_channels=dataset_config['out_channels'],
+            layers_num=dataset_config['layers_num'],
+            model_dim=dataset_config['hidden_channels'],
+            hidden_sf=dataset_config['graph_hidden_sf'],
+            out_sf=dataset_config['graph_out_sf'],
+            embedding_dim=dataset_config['embedding_dim'],
+            include_demo=dataset_config['include_demo'],
+            demo_dim=dataset_config['demo_dim']
+        )
+    elif model_type == 'GATv2':
+        return GATv2ConvNet(
+            out_dim=dataset_config['out_dim'],
+            input_features=dataset_config['in_channels'],
+            output_channels=dataset_config['out_channels'],
+            layers_num=dataset_config['layers_num'],
+            model_dim=dataset_config['hidden_channels'],
+            hidden_sf=dataset_config['gatv2_hidden_sf'],
+            out_sf=dataset_config['gatv2_out_sf'],
+            hidden_heads=dataset_config['gatv2_hidden_heads'],
+            embedding_dim=dataset_config['embedding_dim'],
+            include_demo=dataset_config['include_demo'],
+            demo_dim=dataset_config['demo_dim']
+        )
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")
+
+def run_single_experiment(dataset_config, split_config, run_settings, epochs, scheduler_config, config_idx, model_type='GraphConv'):
     """Run a single experiment with given configuration."""
     
     print(f"\n{'='*80}")
     print(f"Starting experiment {config_idx + 1}")
+    print(f"Model Type: {model_type}")
     print(f"Learning Rate: {run_settings}")
     print(f"Epochs: {epochs}")
     print(f"Train/Test Split: {split_config['train']}/{split_config['test']}")
@@ -41,29 +74,18 @@ def run_single_experiment(dataset_config, split_config, run_settings, epochs, sc
     print(f"{'='*80}\n")
     
     # Create model
-    model = GraphConvNet(
-        out_dim=dataset_config['out_dim'],
-        input_features=dataset_config['in_channels'],
-        output_channels=dataset_config['out_channels'],
-        layers_num=dataset_config['layers_num'],
-        model_dim=dataset_config['hidden_channels'],
-        hidden_sf=dataset_config['graph_hidden_sf'],
-        out_sf=dataset_config['graph_out_sf'],
-        embedding_dim=dataset_config['embedding_dim'],
-        include_demo=dataset_config['include_demo'],
-        demo_dim=dataset_config['demo_dim']
-    )
+    model = create_model(model_type, dataset_config)
     
     # Prepare optimizer parameters with scheduler
     optim_params = {"lr": run_settings}
     optim_params.update(scheduler_config)
     
     # Create unique experiment ID
-    experiment_id = f"{TARGET}_regression_config_{config_idx + 1}_lr_{run_settings}_epochs_{epochs}_scheduler_{scheduler_config.get('scheduler', 'none')}"
+    experiment_id = f"{TARGET}_regression_{model_type}_config_{config_idx + 1}_lr_{run_settings}_epochs_{epochs}_scheduler_{scheduler_config.get('scheduler', 'none')}"
     
     # Setup experiment
     experiment = ExperimentRegression(
-        sgcn_model=model,  # Using sgcn_model parameter for GCN
+        sgcn_model=model,  # Using sgcn_model parameter for both model types
         qgcn_model=None,
         cnn_model=None,
         optim_params=optim_params,
@@ -87,7 +109,7 @@ def run_single_experiment(dataset_config, split_config, run_settings, epochs, sc
     
     return results
 
-def run_all_dsst_experiments():
+def run_all_dsst_experiments(model_type='GraphConv'):
     """Run all experiments defined in the YAML configuration files."""
     
     # Load configurations
@@ -115,7 +137,7 @@ def run_all_dsst_experiments():
         schedulers = schedulers[:min_length]
     
     num_experiments = len(splits)
-    print(f"Running {num_experiments} experiments total")
+    print(f"Running {num_experiments} experiments total with {model_type} model")
     
     all_results = []
     
@@ -128,10 +150,12 @@ def run_all_dsst_experiments():
                 run_settings=learning_rates[i],
                 epochs=epochs_list[i],
                 scheduler_config=schedulers[i],
-                config_idx=i
+                config_idx=i,
+                model_type=model_type
             )
             all_results.append({
                 'config_idx': i,
+                'model_type': model_type,
                 'lr': learning_rates[i],
                 'epochs': epochs_list[i],
                 'scheduler': schedulers[i].get('scheduler', 'none'),
@@ -145,14 +169,14 @@ def run_all_dsst_experiments():
     
     # Print summary of all experiments
     print(f"\n{'='*100}")
-    print("SUMMARY OF ALL EXPERIMENTS")
+    print(f"SUMMARY OF ALL {model_type} EXPERIMENTS")
     print(f"{'='*100}")
-    print(f"{'Config':<8} {'LR':<10} {'Epochs':<8} {'Scheduler':<12} {'Final Test MSE':<15}")
+    print(f"{'Config':<8} {'Model':<10} {'LR':<10} {'Epochs':<8} {'Scheduler':<12} {'Final Test MSE':<15}")
     print("-" * 100)
     
     for result in all_results:
         final_mse = result['results']['test_sgcn_mse'][-1] if result['results']['test_sgcn_mse'] else 'N/A'
-        print(f"{result['config_idx'] + 1:<8} {result['lr']:<10} {result['epochs']:<8} {result['scheduler']:<12} {final_mse:<15.5f}")
+        print(f"{result['config_idx'] + 1:<8} {result['model_type']:<10} {result['lr']:<10} {result['epochs']:<8} {result['scheduler']:<12} {final_mse:<15.5f}")
     
     # Find best performing model
     if all_results:
@@ -160,14 +184,14 @@ def run_all_dsst_experiments():
         if valid_results:
             best_result = min(valid_results, key=lambda x: x['results']['test_sgcn_mse'][-1])
             print(f"\nBest performing model:")
-            print(f"Config {best_result['config_idx'] + 1}: LR={best_result['lr']}, "
+            print(f"Config {best_result['config_idx'] + 1}: Model={best_result['model_type']}, LR={best_result['lr']}, "
                   f"Epochs={best_result['epochs']}, Scheduler={best_result['scheduler']}")
             print(f"Final Test MSE: {best_result['results']['test_sgcn_mse'][-1]:.5f}")
     
-    print(f"\n{TARGET} regression experiments completed!")
+    print(f"\n{TARGET} regression experiments with {model_type} completed!")
     return all_results
 
-def run_specific_experiments(config_indices):
+def run_specific_experiments(config_indices, model_type='GraphConv'):
     """Run specific experiments by their indices (0-based)."""
     
     # Load configurations
@@ -197,7 +221,8 @@ def run_specific_experiments(config_indices):
                 run_settings=learning_rates[i],
                 epochs=epochs_list[i],
                 scheduler_config=schedulers[i],
-                config_idx=i
+                config_idx=i,
+                model_type=model_type
             )
             results.append(result)
         except Exception as e:
@@ -210,6 +235,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run regression experiments")
     parser.add_argument("--config", type=int, nargs='+', 
                       help="Specific configuration indices to run (0-based). If not provided, runs all configs.")
+    parser.add_argument("--model", type=str, choices=['GraphConv', 'GATv2'],
+                      help="Model type to use: GraphConv or GATv2")
     parser.add_argument("--list-configs", action="store_true", 
                       help="List all available configurations and exit")
     
@@ -235,8 +262,8 @@ if __name__ == "__main__":
     
     elif args.config:
         # Run specific configurations
-        print(f"Running specific configurations: {args.config}")
-        run_specific_experiments(args.config)
+        print(f"Running specific configurations: {args.config} with {args.model} model")
+        run_specific_experiments(args.config, args.model)
     else:
         # Run all configurations
-        run_all_dsst_experiments()
+        run_all_dsst_experiments(args.model)

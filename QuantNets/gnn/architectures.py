@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 import torch_geometric.transforms as T
+import torch_geometric.nn as pyg_nn
 from torch_geometric.nn import global_mean_pool
 from torch_geometric.nn import GCNConv, ChebConv, GraphConv, SGConv, GENConv, GeneralConv, GATv2Conv, TransformerConv
 
@@ -54,9 +55,9 @@ class GraphConvNet(torch.nn.Module):
 
         # Add batch normalization and activation layers
         self.batch_norms = torch.nn.ModuleList([
-            torch.nn.BatchNorm1d(1 * model_dim),
-            torch.nn.BatchNorm1d(2 * model_dim),
-            torch.nn.BatchNorm1d(4 * model_dim)
+            pyg_nn.norm.GraphNorm(1 * model_dim),
+            pyg_nn.norm.GraphNorm(2 * model_dim),
+            pyg_nn.norm.GraphNorm(4 * model_dim)
         ])
         self.activations = torch.nn.ModuleList([
             torch.nn.LeakyReLU(),
@@ -144,7 +145,7 @@ class GATv2ConvNet(torch.nn.Module):
         self.conv_layers = [GATv2Conv(
                                     in_channels=embedding_dim,
                                     out_channels=16,
-                                    heads=hidden_heads,
+                                    heads=4,
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True
@@ -152,7 +153,7 @@ class GATv2ConvNet(torch.nn.Module):
                            [GATv2Conv(
                                     in_channels=64,
                                     out_channels=16,
-                                    heads=hidden_heads,
+                                    heads=4,
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True
@@ -160,18 +161,18 @@ class GATv2ConvNet(torch.nn.Module):
                            [GATv2Conv(
                                     in_channels=64,
                                     out_channels=16,
-                                    heads=hidden_heads,
+                                    heads=4,
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True
                                     )]
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
-        # # Add batch normalization and activation layers
-        # self.batch_norms = torch.nn.ModuleList([
-        #     torch.nn.BatchNorm1d(1 * model_dim),
-        #     torch.nn.BatchNorm1d(2 * model_dim)
-        # ])
+        # Add batch normalization and activation layers
+        self.batch_norms = torch.nn.ModuleList([
+            pyg_nn.norm.GraphNorm(64),
+            pyg_nn.norm.GraphNorm(64)
+        ])
         # self.activations = torch.nn.ModuleList([
         #     torch.nn.LeakyReLU(),
         #     torch.nn.LeakyReLU()
@@ -205,8 +206,8 @@ class GATv2ConvNet(torch.nn.Module):
             edge_attr = data.edge_attr
             data.x = self.conv_layers[i](data.x, data.edge_index, edge_attr=edge_attr)
 
-            # if i < self.layers_num - 1:
-            #     data.x = self.batch_norms[i](data.x)
+            if i < self.layers_num - 1:
+                data.x = self.batch_norms[i](data.x)
             #     data.x = self.activations[i](data.x)
 
         graph_features = global_mean_pool(data.x, data.batch)
