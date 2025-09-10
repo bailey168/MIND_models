@@ -1,2 +1,4 @@
 venv/
 QuantNets/Dataset/
+QuantNets/__pycache__
+QuantNets/gnn/__pycache__
