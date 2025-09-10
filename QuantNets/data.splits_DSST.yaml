@@ -7,9 +7,9 @@
 dsst_custom:
   - train: 19420
     test: 4855 
-    batch_size: 512
+    batch_size: 128
 
 gf_custom:
   - train: 27181
-    test: 6796
-    batch_size: 512
+    test: 6796 
+    batch_size: 128
