@@ -44,23 +44,15 @@ class GraphConvNet(torch.nn.Module):
                                     out_channels=4 * model_dim,
                                     bias=bias,
                                     aggr=aggr
-                                    )] + \
-                            [GraphConv(
-                                    in_channels=4 * model_dim,
-                                    out_channels=4 * model_dim,
-                                    bias=bias,
-                                    aggr=aggr
                                     )]
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
         # Add batch normalization and activation layers
         self.batch_norms = torch.nn.ModuleList([
             pyg_nn.norm.GraphNorm(1 * model_dim),
-            pyg_nn.norm.GraphNorm(2 * model_dim),
-            pyg_nn.norm.GraphNorm(4 * model_dim)
+            pyg_nn.norm.GraphNorm(2 * model_dim)
         ])
         self.activations = torch.nn.ModuleList([
-            torch.nn.LeakyReLU(),
             torch.nn.LeakyReLU(),
             torch.nn.LeakyReLU()
         ])
@@ -168,21 +160,11 @@ class GATv2ConvNet(torch.nn.Module):
                                     edge_dim=1,
                                     residual=True,
                                     dropout=0.1
-                                    )] + \
-                            [GATv2Conv(
-                                    in_channels=64,
-                                    out_channels=16,
-                                    heads=4,
-                                    bias=bias,
-                                    edge_dim=1,
-                                    residual=True,
-                                    dropout=0.1
                                     )]
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
         # Add batch normalization and activation layers
         self.batch_norms = torch.nn.ModuleList([
-            pyg_nn.norm.GraphNorm(64),
             pyg_nn.norm.GraphNorm(64),
             pyg_nn.norm.GraphNorm(64)
         ])
