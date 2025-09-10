@@ -32,11 +32,17 @@ schedulers:
         step_size: 50
         gamma: 0.5
   gf_custom:
-    # StepLR: Decay LR by gamma every step_size epochs
-    - scheduler: "step"
+    # CosineAnnealingLR: Cosine annealing
+    - scheduler: "cosine"
       scheduler_params:
-        step_size: 25
-        gamma: 0.5
+        T_max: 254
+        eta_min: 0.000001
+
+    # StepLR: Decay LR by gamma every step_size epochs
+    # - scheduler: "step"
+    #   scheduler_params:
+    #     step_size: 25
+    #     gamma: 0.5
     
     # MultiStepLR: Decay LR at specific milestones
     # - scheduler: "multistep"
@@ -48,12 +54,6 @@ schedulers:
     # - scheduler: "exponential"
     #   scheduler_params:
     #     gamma: 0.95
-    
-    # CosineAnnealingLR: Cosine annealing
-    # - scheduler: "cosine"
-    #   scheduler_params:
-    #     T_max: 500
-    #     eta_min: 0.000001
     
     # ReduceLROnPlateau: Reduce when metric plateaus
     # - scheduler: "plateau"
