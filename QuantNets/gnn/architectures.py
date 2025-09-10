@@ -183,6 +183,7 @@ class GATv2ConvNet(torch.nn.Module):
         # Add batch normalization and activation layers
         self.batch_norms = torch.nn.ModuleList([
             pyg_nn.norm.GraphNorm(64),
+            pyg_nn.norm.GraphNorm(64),
             pyg_nn.norm.GraphNorm(64)
         ])
         # self.activations = torch.nn.ModuleList([
