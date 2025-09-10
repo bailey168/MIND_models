@@ -14,7 +14,7 @@ epochs:
   dsst_custom:
     - 500
   gf_custom:
-    - 252
+    - 254
 
 # Number of runs for statistical significance
 runs:
@@ -35,7 +35,7 @@ schedulers:
     # CosineAnnealingLR: Cosine annealing
     - scheduler: "cosine"
       scheduler_params:
-        T_max: 252
+        T_max: 254
         eta_min: 0.000001
 
     # StepLR: Decay LR by gamma every step_size epochs
