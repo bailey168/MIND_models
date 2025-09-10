@@ -1,0 +1,49 @@
+dataset_config:
+  cheb_K: 3
+  cheb_hidden_sf: 4
+  cheb_out_sf: 2
+  dataset_group: custom
+  dataset_name: custom_dataset_selfloops_True_edgeft_None_norm_True
+  demo_dim: 4
+  download_url: {}
+  edge_attr_dim: 1
+  embedding_dim: 16
+  gatv2_hidden_heads: 4
+  gatv2_hidden_sf: 2
+  gatv2_out_sf: 1
+  gcn_hidden_sf: 4
+  gcn_out_sf: 2
+  gen_hidden_sf: 3
+  gen_out_sf: 2
+  general_hidden_heads: 2
+  general_hidden_sf: 3
+  general_out_sf: 3
+  graph_hidden_sf: 1
+  graph_out_sf: 2
+  hidden_channels: 32
+  in_channels: 21
+  include_demo: true
+  layers_num: 3
+  num_sub_kernels: 7
+  out_channels: 32
+  out_dim: 1
+  pos_descr_dim: -1
+  sg_K: 3
+  sg_hidden_sf: 4
+  sg_out_sf: 2
+  transf_hidden_heads: 2
+  transf_hidden_sf: 2
+  transf_out_sf: 1
+epochs: 253
+experiment_id: GF_regression_GraphConv_config_1_lr_0.001_epochs_253_scheduler_cosine
+model_type: GraphConv
+run_settings: 0.001
+scheduler_config:
+  scheduler: cosine
+  scheduler_params:
+    T_max: 253
+    eta_min: 1.0e-06
+split_config:
+  batch_size: 128
+  test: 6796
+  train: 27181
