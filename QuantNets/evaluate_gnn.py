@@ -4,6 +4,10 @@ import torch
 import numpy as np
 import pickle
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+
+# Set matplotlib backend for headless environments
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 
 # Add the current directory to sys.path
@@ -27,8 +31,8 @@ class ModelEvaluator:
         self.base_path = base_path
         self.dataset_config = dataset_config
         
-        # Load the model
-        self.model = torch.load(model_path, map_location=self.device, weights_only=False)
+        # Load the model using the robust loading method
+        self.model = self._load_model_robust(model_path)
         self.model.eval()
         print(f"Model loaded from {model_path}")
         print(f"Using device: {self.device}")
@@ -40,7 +44,91 @@ class ModelEvaluator:
             dataset_name=dataset_config['dataset_name'],
             parent_dir=base_path
         )
+    
+    def _load_model_robust(self, model_path):
+        """
+        Robustly load a model, trying multiple approaches.
         
+        Args:
+            model_path: Path to the saved model (.pth file)
+            
+        Returns:
+            Loaded model
+        """
+        model_dir = os.path.dirname(model_path)
+        metadata_path = os.path.join(model_dir, "model_metadata.pth")
+        
+        # Method 1: Try loading with metadata (most robust)
+        if os.path.exists(metadata_path):
+            try:
+                print("Attempting to load model using metadata...")
+                metadata = torch.load(metadata_path, map_location=self.device, weights_only=False)
+                
+                # Import model classes
+                from gnn.architectures import GraphConvNet, GATv2ConvNet
+                
+                model_class_name = metadata['model_class']
+                model_config = metadata['model_config']
+                
+                # Create model based on class name and config
+                if model_class_name == 'GraphConvNet':
+                    model = GraphConvNet(
+                        out_dim=model_config.get('out_dim', 1),
+                        input_features=21,  # From your config
+                        output_channels=32,  # From your config  
+                        layers_num=model_config.get('layers_num', 3),
+                        model_dim=32,  # From your config
+                        embedding_dim=16,  # From your config
+                        include_demo=model_config.get('include_demo', True),
+                        demo_dim=model_config.get('demo_dim', 4)
+                    )
+                elif model_class_name == 'GATv2ConvNet':
+                    model = GATv2ConvNet(
+                        out_dim=model_config.get('out_dim', 1),
+                        input_features=21,  # From your config
+                        output_channels=32,  # From your config
+                        layers_num=model_config.get('layers_num', 3),
+                        model_dim=32,  # From your config
+                        embedding_dim=16,  # From your config
+                        include_demo=model_config.get('include_demo', True),
+                        demo_dim=model_config.get('demo_dim', 4)
+                    )
+                else:
+                    raise ValueError(f"Unknown model class: {model_class_name}")
+                
+                # Load the state dict
+                model.load_state_dict(metadata['model_state_dict'])
+                model.to(self.device)
+                print(f"Successfully loaded {model_class_name} using metadata")
+                return model
+                
+            except Exception as e:
+                print(f"Failed to load using metadata: {e}")
+                print("Falling back to direct model loading...")
+        
+        # Method 2: Try loading the complete model directly (backward compatibility)
+        try:
+            print("Attempting to load complete model object...")
+            model = torch.load(model_path, map_location=self.device, weights_only=False)
+            model.to(self.device)
+            print("Successfully loaded complete model object")
+            return model
+            
+        except Exception as e:
+            print(f"Failed to load complete model: {e}")
+            
+        # Method 3: Try loading with weights_only=True as a last resort
+        try:
+            print("Attempting to load with weights_only=True...")
+            state_dict = torch.load(model_path, map_location=self.device, weights_only=True)
+            
+            # This requires manual model creation - would need more config info
+            print("Loaded state dict, but need model architecture info to proceed")
+            raise RuntimeError("Cannot create model from state dict alone - need architecture information")
+            
+        except Exception as e:
+            raise RuntimeError(f"All model loading methods failed. Error: {e}")
+    
     def _move_data_to_device(self, data):
         """Move graph data to target device."""
         if hasattr(data, 'x') and data.x is not None:
@@ -135,13 +223,14 @@ class ModelEvaluator:
         
         return results
     
-    def plot_predictions(self, results, save_path=None):
+    def plot_predictions(self, results, save_path=None, show_plot=False):
         """
         Plot predictions vs true values.
         
         Args:
             results: Results dictionary from evaluate_dataset
             save_path: Optional path to save the plot
+            show_plot: Whether to show the plot (requires interactive backend)
         """
         predictions = results['predictions']
         true_values = results['true_values']
@@ -173,20 +262,122 @@ class ModelEvaluator:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"Plot saved to {save_path}")
         
-        plt.show()
+        if show_plot:
+            plt.show()
+        else:
+            plt.close()  # Close the figure to free memory
     
+    def plot_training_curves(self, experiment_dir, save_path=None, show_plot=False):
+        """
+        Plot training and test MSE curves from saved pickle files.
+        
+        Args:
+            experiment_dir: Directory containing train_mse.pk and test_mse.pk files
+            save_path: Optional path to save the plot
+            show_plot: Whether to show the plot (requires interactive backend)
+        """
+        train_mse_path = os.path.join(experiment_dir, "train_mse.pk")
+        test_mse_path = os.path.join(experiment_dir, "test_mse.pk")
+        
+        # Check if files exist
+        if not os.path.exists(train_mse_path):
+            print(f"Train MSE file not found: {train_mse_path}")
+            return
+        if not os.path.exists(test_mse_path):
+            print(f"Test MSE file not found: {test_mse_path}")
+            return
+        
+        # Load the MSE data
+        with open(train_mse_path, 'rb') as f:
+            train_mse = pickle.load(f)
+        with open(test_mse_path, 'rb') as f:
+            test_mse = pickle.load(f)
+        
+        # Create the plot
+        plt.figure(figsize=(12, 8))
+        
+        epochs = range(1, len(train_mse) + 1)
+        
+        plt.plot(epochs, train_mse, 'b-', linewidth=2, label='Training MSE', alpha=0.8)
+        plt.plot(epochs, test_mse, 'r-', linewidth=2, label='Test MSE', alpha=0.8)
+        
+        # Add markers for better visibility
+        plt.plot(epochs[::max(1, len(epochs)//20)], 
+                [train_mse[i] for i in range(0, len(train_mse), max(1, len(epochs)//20))], 
+                'bo', markersize=4, alpha=0.7)
+        plt.plot(epochs[::max(1, len(epochs)//20)], 
+                [test_mse[i] for i in range(0, len(test_mse), max(1, len(epochs)//20))], 
+                'ro', markersize=4, alpha=0.7)
+        
+        # Formatting
+        plt.xlabel('Epoch', fontsize=14)
+        plt.ylabel('Mean Squared Error (MSE)', fontsize=14)
+        plt.title('Training and Test MSE Over Time', fontsize=16, fontweight='bold')
+        plt.legend(fontsize=12)
+        plt.grid(True, alpha=0.3)
+        
+        # Add some statistics to the plot
+        min_train_mse = min(train_mse)
+        min_test_mse = min(test_mse)
+        final_train_mse = train_mse[-1]
+        final_test_mse = test_mse[-1]
+        
+        # Add text box with statistics
+        stats_text = f'Final Train MSE: {final_train_mse:.6f}\n'
+        stats_text += f'Final Test MSE: {final_test_mse:.6f}\n'
+        stats_text += f'Best Train MSE: {min_train_mse:.6f}\n'
+        stats_text += f'Best Test MSE: {min_test_mse:.6f}'
+        
+        plt.text(0.02, 0.98, stats_text, transform=plt.gca().transAxes, 
+                fontsize=10, verticalalignment='top', 
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+        
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"Training curves plot saved to {save_path}")
+        
+        if show_plot:
+            plt.show()
+        else:
+            plt.close()  # Close the figure to free memory
+        
+        # Print summary
+        print(f"\nTraining Curves Summary:")
+        print(f"{'='*50}")
+        print(f"Total epochs: {len(train_mse)}")
+        print(f"Final Training MSE: {final_train_mse:.6f}")
+        print(f"Final Test MSE: {final_test_mse:.6f}")
+        print(f"Best Training MSE: {min_train_mse:.6f} (epoch {train_mse.index(min_train_mse) + 1})")
+        print(f"Best Test MSE: {min_test_mse:.6f} (epoch {test_mse.index(min_test_mse) + 1})")
+        print(f"{'='*50}")
+
     def print_evaluation_summary(self, results):
-        """Print a summary of evaluation results."""
-        print(f"\n{'='*50}")
-        print(f"EVALUATION SUMMARY - {results['dataset_type'].upper()} SET")
-        print(f"{'='*50}")
-        print(f"Number of samples: {results['n_samples']}")
-        print(f"R² Score: {results['r2_score']:.6f}")
-        print(f"MSE: {results['mse']:.6f}")
-        print(f"RMSE: {results['rmse']:.6f}")
-        print(f"MAE: {results['mae']:.6f}")
-        print(f"Correlation: {results['correlation']:.6f}")
-        print(f"{'='*50}")
+        """
+        Print a summary of evaluation results.
+        
+        Args:
+            results: Results dictionary from evaluate_dataset
+        """
+        dataset_type = results['dataset_type']
+        n_samples = results['n_samples']
+        r2 = results['r2_score']
+        mse = results['mse']
+        rmse = results['rmse']
+        mae = results['mae']
+        correlation = results['correlation']
+        
+        print(f"\n{'='*60}")
+        print(f"{dataset_type.upper()} SET EVALUATION SUMMARY")
+        print(f"{'='*60}")
+        print(f"Number of samples: {n_samples}")
+        print(f"R² Score: {r2:.6f}")
+        print(f"Mean Squared Error (MSE): {mse:.6f}")
+        print(f"Root Mean Squared Error (RMSE): {rmse:.6f}")
+        print(f"Mean Absolute Error (MAE): {mae:.6f}")
+        print(f"Pearson Correlation: {correlation:.6f}")
+        print(f"{'='*60}")
 
 
 def load_config_from_experiment(experiment_dir):
@@ -199,13 +390,25 @@ def load_config_from_experiment(experiment_dir):
     Returns:
         Configuration dictionary
     """
-    # This is a basic config based on your files
-    # You might want to save the actual config during training for better reproducibility
-    # config = {
-    #     'dataset_name': 'custom_dataset_selfloops_True_edgeft_None_norm_True',
-    #     'num_train': 19420,
-    #     'num_test': 4855
-    # }
+    # Try to load from saved experiment config first
+    config_path = os.path.join(experiment_dir, "experiment_config.yaml")
+    if os.path.exists(config_path):
+        try:
+            import yaml
+            with open(config_path, 'r') as f:
+                exp_config = yaml.safe_load(f)
+            dataset_config = exp_config.get('dataset_config', {})
+            split_config = exp_config.get('split_config', {})
+            
+            return {
+                'dataset_name': dataset_config.get('dataset_name', 'custom_dataset_selfloops_True_edgeft_None_norm_True'),
+                'num_train': split_config.get('train', 27181),
+                'num_test': split_config.get('test', 6796)
+            }
+        except Exception as e:
+            print(f"Warning: Could not load experiment config: {e}")
+    
+    # Fallback to hardcoded config
     config = {
         'dataset_name': 'custom_dataset_selfloops_True_edgeft_None_norm_True',
         'num_train': 27181,
@@ -220,7 +423,7 @@ def main():
     base_path = "/Users/baileyng/MIND_models/QuantNets"
     
     # Example: evaluate SGCN model
-    experiment_id = "GF_regression_config_1_lr_0.0001_epochs_497_scheduler_step"  # Update this to match your experiment
+    experiment_id = "GF_regression_GATv2_config_1_lr_0.0001_epochs_496_scheduler_step"  # Update this to match your experiment
     model_path = os.path.join(base_path, "Experiments_FC_change_arch", f"run_{experiment_id}", "sgcn", "model.pth")
     
     # Check if model exists
@@ -261,6 +464,9 @@ def main():
         plot_dir = os.path.dirname(model_path)
         evaluator.plot_predictions(test_results, save_path=os.path.join(plot_dir, "test_predictions.png"))
         evaluator.plot_predictions(train_results, save_path=os.path.join(plot_dir, "train_predictions.png"))
+        
+        # Plot training curves from saved MSE files
+        evaluator.plot_training_curves(plot_dir, save_path=os.path.join(plot_dir, "training_curves.png"))
         
         # Save detailed results
         results_path = os.path.join(plot_dir, "evaluation_results.pkl")

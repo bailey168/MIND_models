@@ -14,7 +14,7 @@ epochs:
   dsst_custom:
     - 500
   gf_custom:
-    - 496
+    - 254
 
 # Number of runs for statistical significance
 runs:
@@ -29,7 +29,7 @@ schedulers:
     # StepLR: Decay LR by gamma every step_size epochs
     - scheduler: "step"
       scheduler_params:
-        step_size: 50
+        step_size: 25
         gamma: 0.5
   gf_custom:
     # StepLR: Decay LR by gamma every step_size epochs

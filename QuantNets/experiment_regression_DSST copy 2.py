@@ -326,7 +326,7 @@ class ExperimentRegression:
         if not os.path.exists(base_path):
             print("Ensure that your base path exists -> {}".format(base_path))
             sys.exit(1)
-        experiments_dir = os.path.join(base_path, "Experiments_FC_09_10")
+        experiments_dir = os.path.join(base_path, "Experiments_FC_change_arch")
         if not os.path.exists(experiments_dir):
             os.mkdir(experiments_dir)
         underscored_experiment_id = "_".join(str(experiment_id).strip().split(" "))
@@ -744,38 +744,3 @@ class ExperimentRegression:
             import traceback
             traceback.print_exc()
             return None
-
-    @staticmethod
-    def plot_history(data, labels):
-        """Plot training history."""
-        font = {'weight':'bold', 'size':8}
-        matplotlib.rc('font', **font)
-        matplotlib.rcParams.update({'font.size':8})
-
-        indicators = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
-        leftover_count = len(data) % 2
-        num_rows = len(data) // 2
-        col_count = 2
-        row_count = num_rows + leftover_count
-        fig, ax = plt.subplots(nrows=row_count, ncols=col_count, figsize=(12, 8))
-        fig.tight_layout(pad=0.8)
-        plt.subplots_adjust(wspace=0.4, hspace=0.5)
-
-        # Loop and plot the data and their labels
-        for i, row_plts in enumerate(ax):
-            for j, row_col_plt in enumerate(row_plts):
-                data_index = i * col_count + j
-                if data_index < len(data):
-                    xdata = list(range(1, len(data[data_index]) + 1))
-                    ydata = data[data_index]
-                    data_label = labels[data_index]
-                    data_indicator = indicators[data_index % len(indicators)]
-                    row_col_plt.plot(xdata, ydata, color=data_indicator, label=data_label)
-                    row_col_plt.set_xticks(xdata)
-                    row_col_plt.legend(loc="upper right")
-                    row_col_plt.set_xlabel('Epoch')
-                    row_col_plt.set_ylabel(data_label)
-                    row_col_plt.set_title('{} vs. No. of epochs'.format(data_label))
-                else:
-                    row_col_plt.set_visible(False)
-        plt.show()

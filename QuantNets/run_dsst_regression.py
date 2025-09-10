@@ -61,7 +61,7 @@ def create_model(model_type, dataset_config):
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
-def run_single_experiment(dataset_config, split_config, run_settings, epochs, scheduler_config, config_idx, model_type='GraphConv'):
+def run_single_experiment(dataset_config, split_config, run_settings, epochs, scheduler_config, config_idx, model_type, run_evaluation=True):
     """Run a single experiment with given configuration."""
     
     print(f"\n{'='*80}")
@@ -71,6 +71,7 @@ def run_single_experiment(dataset_config, split_config, run_settings, epochs, sc
     print(f"Epochs: {epochs}")
     print(f"Train/Test Split: {split_config['train']}/{split_config['test']}")
     print(f"Scheduler: {scheduler_config.get('scheduler', 'none')}")
+    print(f"Run Evaluation: {run_evaluation}")
     print(f"{'='*80}\n")
     
     # Create model
@@ -101,15 +102,39 @@ def run_single_experiment(dataset_config, split_config, run_settings, epochs, sc
         id=experiment_id
     )
     
-    # Run experiment
-    results = experiment.run(num_epochs=epochs, eval_training_set=True)
+    # Run experiment with evaluation
+    results = experiment.run(num_epochs=epochs, eval_training_set=True, run_evaluation=run_evaluation)
+    
+    # Save experiment configuration for evaluation script
+    if hasattr(experiment, 'sgcn_specific_run_dir') and experiment.sgcn_specific_run_dir:
+        experiment_config = {
+            'dataset_config': dataset_config,
+            'split_config': split_config,
+            'model_type': model_type,
+            'experiment_id': experiment_id,
+            'run_settings': run_settings,
+            'epochs': epochs,
+            'scheduler_config': scheduler_config
+        }
+        config_path = os.path.join(experiment.sgcn_specific_run_dir, "experiment_config.yaml")
+        import yaml
+        with open(config_path, 'w') as f:
+            yaml.dump(experiment_config, f)
     
     print(f"\nExperiment {config_idx + 1} completed!")
     print(f"Final Test MSE: SGCN={results['test_sgcn_mse'][-1]:.5f}")
     
+    # Print evaluation summary if available
+    if 'evaluation' in results and results['evaluation']:
+        eval_results = results['evaluation']
+        print(f"\nEvaluation Summary for {eval_results['model_type']} model:")
+        print(f"Test R² Score: {eval_results['test_results']['r2_score']:.4f}")
+        print(f"Test RMSE: {eval_results['test_results']['rmse']:.4f}")
+        print(f"Plots saved to: {eval_results['model_path'].replace('model.pth', '')}")
+    
     return results
 
-def run_all_dsst_experiments(model_type='GraphConv'):
+def run_all_dsst_experiments(model_type, run_evaluation=True):
     """Run all experiments defined in the YAML configuration files."""
     
     # Load configurations
@@ -138,6 +163,7 @@ def run_all_dsst_experiments(model_type='GraphConv'):
     
     num_experiments = len(splits)
     print(f"Running {num_experiments} experiments total with {model_type} model")
+    print(f"Post-training evaluation: {'Enabled' if run_evaluation else 'Disabled'}")
     
     all_results = []
     
@@ -151,7 +177,8 @@ def run_all_dsst_experiments(model_type='GraphConv'):
                 epochs=epochs_list[i],
                 scheduler_config=schedulers[i],
                 config_idx=i,
-                model_type=model_type
+                model_type=model_type,
+                run_evaluation=run_evaluation
             )
             all_results.append({
                 'config_idx': i,
@@ -171,12 +198,15 @@ def run_all_dsst_experiments(model_type='GraphConv'):
     print(f"\n{'='*100}")
     print(f"SUMMARY OF ALL {model_type} EXPERIMENTS")
     print(f"{'='*100}")
-    print(f"{'Config':<8} {'Model':<10} {'LR':<10} {'Epochs':<8} {'Scheduler':<12} {'Final Test MSE':<15}")
+    print(f"{'Config':<8} {'Model':<10} {'LR':<10} {'Epochs':<8} {'Scheduler':<12} {'Final Test MSE':<15} {'Test R²':<10}")
     print("-" * 100)
     
     for result in all_results:
         final_mse = result['results']['test_sgcn_mse'][-1] if result['results']['test_sgcn_mse'] else 'N/A'
-        print(f"{result['config_idx'] + 1:<8} {result['model_type']:<10} {result['lr']:<10} {result['epochs']:<8} {result['scheduler']:<12} {final_mse:<15.5f}")
+        test_r2 = 'N/A'
+        if 'evaluation' in result['results'] and result['results']['evaluation']:
+            test_r2 = f"{result['results']['evaluation']['test_results']['r2_score']:.4f}"
+        print(f"{result['config_idx'] + 1:<8} {result['model_type']:<10} {result['lr']:<10} {result['epochs']:<8} {result['scheduler']:<12} {final_mse:<15.5f} {test_r2:<10}")
     
     # Find best performing model
     if all_results:
@@ -187,11 +217,15 @@ def run_all_dsst_experiments(model_type='GraphConv'):
             print(f"Config {best_result['config_idx'] + 1}: Model={best_result['model_type']}, LR={best_result['lr']}, "
                   f"Epochs={best_result['epochs']}, Scheduler={best_result['scheduler']}")
             print(f"Final Test MSE: {best_result['results']['test_sgcn_mse'][-1]:.5f}")
+            if 'evaluation' in best_result['results'] and best_result['results']['evaluation']:
+                eval_info = best_result['results']['evaluation']
+                print(f"Test R² Score: {eval_info['test_results']['r2_score']:.4f}")
+                print(f"Evaluation plots: {eval_info['model_path'].replace('model.pth', '')}")
     
     print(f"\n{TARGET} regression experiments with {model_type} completed!")
     return all_results
 
-def run_specific_experiments(config_indices, model_type='GraphConv'):
+def run_specific_experiments(config_indices, model_type, run_evaluation=True):
     """Run specific experiments by their indices (0-based)."""
     
     # Load configurations
@@ -222,7 +256,8 @@ def run_specific_experiments(config_indices, model_type='GraphConv'):
                 epochs=epochs_list[i],
                 scheduler_config=schedulers[i],
                 config_idx=i,
-                model_type=model_type
+                model_type=model_type,
+                run_evaluation=run_evaluation
             )
             results.append(result)
         except Exception as e:
@@ -239,8 +274,12 @@ if __name__ == "__main__":
                       help="Model type to use: GraphConv or GATv2")
     parser.add_argument("--list-configs", action="store_true", 
                       help="List all available configurations and exit")
+    parser.add_argument("--no-eval", action="store_true", 
+                      help="Skip post-training evaluation")
     
     args = parser.parse_args()
+    
+    run_evaluation = not args.no_eval  # Invert the flag
     
     if args.list_configs:
         # Load configurations to show available options
@@ -263,7 +302,8 @@ if __name__ == "__main__":
     elif args.config:
         # Run specific configurations
         print(f"Running specific configurations: {args.config} with {args.model} model")
-        run_specific_experiments(args.config, args.model)
+        print(f"Post-training evaluation: {'Enabled' if run_evaluation else 'Disabled'}")
+        run_specific_experiments(args.config, args.model, run_evaluation)
     else:
         # Run all configurations
-        run_all_dsst_experiments(args.model)
+        run_all_dsst_experiments(args.model, run_evaluation)

@@ -148,7 +148,8 @@ class GATv2ConvNet(torch.nn.Module):
                                     heads=4,
                                     bias=bias,
                                     edge_dim=1,
-                                    residual=True
+                                    residual=True,
+                                    dropout=0.1
                                     )] + \
                            [GATv2Conv(
                                     in_channels=64,
@@ -156,7 +157,8 @@ class GATv2ConvNet(torch.nn.Module):
                                     heads=4,
                                     bias=bias,
                                     edge_dim=1,
-                                    residual=True
+                                    residual=True,
+                                    dropout=0.1
                                     )] + \
                            [GATv2Conv(
                                     in_channels=64,
@@ -164,7 +166,8 @@ class GATv2ConvNet(torch.nn.Module):
                                     heads=4,
                                     bias=bias,
                                     edge_dim=1,
-                                    residual=True
+                                    residual=True,
+                                    dropout=0.1
                                     )]
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
