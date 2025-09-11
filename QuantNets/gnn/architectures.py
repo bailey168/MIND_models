@@ -75,11 +75,11 @@ class GraphConvNet(torch.nn.Module):
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.LeakyReLU(),
             torch.nn.Dropout(0.1),
-            torch.nn.Linear(model_dim, model_dim / 2),
-            torch.nn.BatchNorm1d(model_dim / 2),
+            torch.nn.Linear(model_dim, model_dim // 2),
+            torch.nn.BatchNorm1d(model_dim // 2),
             torch.nn.LeakyReLU(),
             torch.nn.Dropout(0.1),
-            torch.nn.Linear(model_dim / 2, out_dim)
+            torch.nn.Linear(model_dim // 2, out_dim)
         )
 
     def forward(self, data):
