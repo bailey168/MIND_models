@@ -27,29 +27,38 @@ class GraphConvNet(torch.nn.Module):
             embedding_dim=embedding_dim
         )
 
-        hidden_dim = 2 * model_dim
+        self.conv_layers = [GraphConv(
+                                    in_channels=embedding_dim,
+                                    out_channels=1 * model_dim,
+                                    bias=bias,
+                                    aggr=aggr
+                                    )] + \
+                           [GraphConv(
+                                    in_channels=1 * model_dim,
+                                    out_channels=2 * model_dim,
+                                    bias=bias,
+                                    aggr=aggr
+                                    )] + \
+                           [GraphConv(
+                                    in_channels=2 * model_dim,
+                                    out_channels=4 * model_dim,
+                                    bias=bias,
+                                    aggr=aggr
+                                    )]
+        self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
-        # Project embedding to hidden dimension
-        self.input_projection = torch.nn.Linear(embedding_dim, hidden_dim)
-
-        self.conv_layers = torch.nn.ModuleList([
-            GraphConv(
-                in_channels=hidden_dim,
-                out_channels=hidden_dim,
-                bias=bias,
-                aggr=aggr
-            ) for _ in range(layers_num)
-        ])
-
+        # Add batch normalization and activation layers
         self.batch_norms = torch.nn.ModuleList([
-            pyg_nn.norm.GraphNorm(hidden_dim) for _ in range(layers_num - 1)
+            pyg_nn.norm.GraphNorm(1 * model_dim),
+            pyg_nn.norm.GraphNorm(2 * model_dim)
         ])
         self.activations = torch.nn.ModuleList([
-            torch.nn.LeakyReLU() for _ in range(layers_num - 1)
+            torch.nn.LeakyReLU(),
+            torch.nn.LeakyReLU()
         ])
 
         # Calculate final feature dimension
-        graph_features_dim = hidden_dim
+        graph_features_dim = 4 * model_dim
 
         if self.include_demo:
             self.demo_projection = torch.nn.Linear(self.demo_dim, 16)
@@ -66,22 +75,19 @@ class GraphConvNet(torch.nn.Module):
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.LeakyReLU(),
             torch.nn.Dropout(0.1),
-            torch.nn.Linear(model_dim, out_dim)
+            torch.nn.Linear(model_dim, model_dim // 2),
+            torch.nn.BatchNorm1d(model_dim // 2),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(0.1),
+            torch.nn.Linear(model_dim // 2, out_dim)
         )
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
-        data.x = self.input_projection(data.x)
 
         for i in range(self.layers_num):
-            # Store input for residual connection
-            residual = data.x
-            
             edge_weight = data.edge_attr.squeeze(-1)
             data.x = self.conv_layers[i](data.x, data.edge_index, edge_weight=edge_weight)
-            
-            # Add residual connection
-            data.x = data.x + residual
 
             if i < self.layers_num - 1:
                 data.x = self.batch_norms[i](data.x)
@@ -132,39 +138,47 @@ class GATv2ConvNet(torch.nn.Module):
             embedding_dim=embedding_dim
         )
 
-        # Use consistent dimensions: 16 * 4 = 64 for all layers
-        out_channels_per_head = 16
-        heads = 4
-        hidden_dim = out_channels_per_head * heads
+        self.conv_layers = [GATv2Conv(
+                                    in_channels=embedding_dim,
+                                    out_channels=16,
+                                    heads=4,
+                                    bias=bias,
+                                    edge_dim=1,
+                                    residual=True,
+                                    dropout=0.1
+                                    )] + \
+                           [GATv2Conv(
+                                    in_channels=64,
+                                    out_channels=16,
+                                    heads=4,
+                                    bias=bias,
+                                    edge_dim=1,
+                                    residual=True,
+                                    dropout=0.1
+                                    )] + \
+                           [GATv2Conv(
+                                    in_channels=64,
+                                    out_channels=16,
+                                    heads=4,
+                                    bias=bias,
+                                    edge_dim=1,
+                                    residual=True,
+                                    dropout=0.1
+                                    )]
+        self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
-        self.input_projection = torch.nn.Linear(embedding_dim, hidden_dim)
-
-
-        # All conv layers have same input/output dimensions for residual connections
-        self.conv_layers = torch.nn.ModuleList([
-            GATv2Conv(
-                in_channels=hidden_dim,
-                out_channels=out_channels_per_head,
-                heads=heads,
-                bias=bias,
-                edge_dim=1,
-                residual=True,
-                dropout=0.1
-            ) for _ in range(layers_num)
-        ])
-
-        # Add batch normalization layers
+        # Add batch normalization and activation layers
         self.batch_norms = torch.nn.ModuleList([
-            pyg_nn.norm.GraphNorm(hidden_dim) for _ in range(layers_num - 1)
+            pyg_nn.norm.GraphNorm(64),
+            pyg_nn.norm.GraphNorm(64)
         ])
-
         # self.activations = torch.nn.ModuleList([
         #     torch.nn.LeakyReLU(),
         #     torch.nn.LeakyReLU()
         # ])
 
         # Calculate final feature dimension
-        graph_features_dim = hidden_dim
+        graph_features_dim = 64
 
         if self.include_demo:
             self.demo_projection = torch.nn.Linear(self.demo_dim, 16)
@@ -181,25 +195,23 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.BatchNorm1d(32),
             torch.nn.LeakyReLU(),
             torch.nn.Dropout(0.1),
-            torch.nn.Linear(32, out_dim)
+            torch.nn.Linear(32, 16),
+            torch.nn.BatchNorm1d(16),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(0.1),
+            torch.nn.Linear(16, out_dim)
         )
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
-        data.x = self.input_projection(data.x)
 
         for i in range(self.layers_num):
-            # Store input for residual connection
-            residual = data.x
-            
             edge_attr = data.edge_attr
             data.x = self.conv_layers[i](data.x, data.edge_index, edge_attr=edge_attr)
-            
-            # Add residual connection
-            data.x = data.x + residual
 
             if i < self.layers_num - 1:
                 data.x = self.batch_norms[i](data.x)
+            #     data.x = self.activations[i](data.x)
 
         graph_features = global_mean_pool(data.x, data.batch)
 

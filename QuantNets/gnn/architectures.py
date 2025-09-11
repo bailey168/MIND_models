@@ -75,11 +75,7 @@ class GraphConvNet(torch.nn.Module):
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.LeakyReLU(),
             torch.nn.Dropout(0.1),
-            torch.nn.Linear(model_dim, model_dim // 2),
-            torch.nn.BatchNorm1d(model_dim // 2),
-            torch.nn.LeakyReLU(),
-            torch.nn.Dropout(0.1),
-            torch.nn.Linear(model_dim // 2, out_dim)
+            torch.nn.Linear(model_dim, out_dim)
         )
 
     def forward(self, data):
@@ -195,11 +191,7 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.BatchNorm1d(32),
             torch.nn.LeakyReLU(),
             torch.nn.Dropout(0.1),
-            torch.nn.Linear(32, 16),
-            torch.nn.BatchNorm1d(16),
-            torch.nn.LeakyReLU(),
-            torch.nn.Dropout(0.1),
-            torch.nn.Linear(16, out_dim)
+            torch.nn.Linear(32, out_dim)
         )
 
     def forward(self, data):
