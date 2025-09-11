@@ -13,6 +13,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader as RawDataLoader
 from torch_geometric.loader import DataLoader as GraphDataLoader
+from torchtune.modules import get_cosine_schedule_with_warmup
 
 from util.data_processing import *
 
@@ -241,6 +242,20 @@ class ExperimentRegression:
                 factor=scheduler_params.get("factor", 0.5),
                 patience=scheduler_params.get("patience", 10),
                 min_lr=scheduler_params.get("min_lr", 1e-6)
+            )
+        elif scheduler_type == "warmup_cosine":
+            # Linear warmup followed by cosine decay
+            num_warmup_steps = scheduler_params.get("num_warmup_steps", 50)
+            num_training_steps = scheduler_params.get("num_training_steps", 500)
+            num_cycles = scheduler_params.get("num_cycles", 0.5)
+            last_epoch = scheduler_params.get("last_epoch", -1)
+            
+            return get_cosine_schedule_with_warmup(
+                optimizer=optimizer,
+                num_warmup_steps=num_warmup_steps,
+                num_training_steps=num_training_steps,
+                num_cycles=num_cycles,
+                last_epoch=last_epoch
             )
         else:
             return None

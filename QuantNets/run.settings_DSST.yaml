@@ -32,11 +32,19 @@ schedulers:
         step_size: 50
         gamma: 0.5
   gf_custom:
-    # CosineAnnealingLR: Cosine annealing
-    - scheduler: "cosine"
+    # Warmup Cosine: Linear warmup followed by cosine decay
+    - scheduler: "warmup_cosine"
       scheduler_params:
-        T_max: 254
-        eta_min: 0.000001
+        num_warmup_steps: 25
+        num_training_steps: 254
+        num_cycles: 0.5
+        last_epoch: -1
+
+    # CosineAnnealingLR: Cosine annealing
+    # - scheduler: "cosine"
+    #   scheduler_params:
+    #     T_max: 254
+    #     eta_min: 0.000001
 
     # StepLR: Decay LR by gamma every step_size epochs
     # - scheduler: "step"
