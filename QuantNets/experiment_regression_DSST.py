@@ -341,7 +341,7 @@ class ExperimentRegression:
         if not os.path.exists(base_path):
             print("Ensure that your base path exists -> {}".format(base_path))
             sys.exit(1)
-        experiments_dir = os.path.join(base_path, "Experiments_FC_09_10")
+        experiments_dir = os.path.join(base_path, "Experiments_FC_09_11_residual")
         if not os.path.exists(experiments_dir):
             os.mkdir(experiments_dir)
         underscored_experiment_id = "_".join(str(experiment_id).strip().split(" "))
