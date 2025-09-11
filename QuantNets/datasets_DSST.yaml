@@ -41,7 +41,7 @@ gf_custom:
   general_hidden_heads: 2
   general_out_sf: 3
   general_hidden_sf: 3
-  gatv2_hidden_heads: 2
+  gatv2_hidden_heads: 4
   gatv2_out_sf: 1
   gatv2_hidden_sf: 2
   
