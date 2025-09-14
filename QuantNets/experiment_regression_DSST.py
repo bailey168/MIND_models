@@ -184,11 +184,11 @@ class ExperimentRegression:
         self.sgcn_model_optimizer = None
         
         if self.cnn_model_exists:
-            self.cnn_model_optimizer = torch.optim.AdamW(self.cnn_model.parameters(), lr=learning_rate, weight_decay=0.0001)
+            self.cnn_model_optimizer = torch.optim.AdamW(self.cnn_model.parameters(), lr=learning_rate, weight_decay=0.001)
         if self.qgcn_model_exists:
-            self.qgcn_model_optimizer = torch.optim.AdamW(self.qgcn_model.parameters(), lr=learning_rate, weight_decay=0.0001)
+            self.qgcn_model_optimizer = torch.optim.AdamW(self.qgcn_model.parameters(), lr=learning_rate, weight_decay=0.001)
         if self.sgcn_model_exists:
-            self.sgcn_model_optimizer = torch.optim.AdamW(self.sgcn_model.parameters(), lr=learning_rate, weight_decay=0.0001)
+            self.sgcn_model_optimizer = torch.optim.AdamW(self.sgcn_model.parameters(), lr=learning_rate, weight_decay=0.001)
 
         # Add learning rate schedulers
         self.cnn_model_scheduler = None
@@ -341,7 +341,7 @@ class ExperimentRegression:
         if not os.path.exists(base_path):
             print("Ensure that your base path exists -> {}".format(base_path))
             sys.exit(1)
-        experiments_dir = os.path.join(base_path, "Experiments_FC_09_13_inject")
+        experiments_dir = os.path.join(base_path, "Experiments_FC_09_14_optgat")
         if not os.path.exists(experiments_dir):
             os.mkdir(experiments_dir)
         underscored_experiment_id = "_".join(str(experiment_id).strip().split(" "))
