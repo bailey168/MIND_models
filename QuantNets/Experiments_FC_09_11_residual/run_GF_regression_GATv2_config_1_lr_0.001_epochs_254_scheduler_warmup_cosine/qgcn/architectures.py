@@ -38,23 +38,8 @@ class GraphConvNet(torch.nn.Module):
                 out_channels=hidden_dim,
                 bias=bias,
                 aggr=aggr
-            ) for _ in range(self.layers_num)
+            ) for _ in range(layers_num)
         ])
-
-        if self.include_demo:
-            # 1-layer MLP for demographic data at each layer
-            self.demo_mlps = torch.nn.ModuleList([
-                torch.nn.Linear(self.demo_dim, 16) for _ in range(self.layers_num)
-            ])
-            
-            # 2-layer MLP to downsize concatenated features
-            self.downsize_mlps = torch.nn.ModuleList([
-                torch.nn.Sequential(
-                    torch.nn.Linear(hidden_dim + 16, hidden_dim * 2),
-                    torch.nn.LeakyReLU(),
-                    torch.nn.Linear(hidden_dim * 2, hidden_dim)
-                ) for _ in range(self.layers_num)
-            ])
 
         self.batch_norms = torch.nn.ModuleList([
             pyg_nn.norm.GraphNorm(hidden_dim) for _ in range(layers_num - 1)
@@ -63,40 +48,55 @@ class GraphConvNet(torch.nn.Module):
             torch.nn.LeakyReLU() for _ in range(layers_num - 1)
         ])
 
-        self.classifier = torch.nn.Linear(hidden_dim, out_dim)
+        # Calculate final feature dimension
+        graph_features_dim = hidden_dim
+
+        if self.include_demo:
+            self.demo_projection = torch.nn.Linear(self.demo_dim, 16)
+            total_features_dim = graph_features_dim + 16
+        else:
+            total_features_dim = graph_features_dim
+
+        self.classifier = torch.nn.Sequential(
+            torch.nn.Linear(total_features_dim, model_dim * 2),
+            torch.nn.BatchNorm1d(model_dim * 2),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(0.1),
+            torch.nn.Linear(model_dim * 2, model_dim),
+            torch.nn.BatchNorm1d(model_dim),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(0.1),
+            torch.nn.Linear(model_dim, out_dim)
+        )
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
         data.x = self.input_projection(data.x)
 
         for i in range(self.layers_num):
-            # Apply graph convolution
+            # Store input for residual connection
+            residual = data.x
+            
             edge_weight = data.edge_attr.squeeze(-1)
             data.x = self.conv_layers[i](data.x, data.edge_index, edge_weight=edge_weight)
             
-            if self.include_demo and hasattr(data, 'demographics'):
-                # Process demographics through 1-layer MLP
-                demo_features = self.demo_mlps[i](data.demographics)
-                
-                # Expand demographics to match number of nodes
-                nodes_per_graph = torch.bincount(data.batch)
-                demo_expanded = torch.repeat_interleave(demo_features, nodes_per_graph, dim=0)
+            # Add residual connection
+            data.x = data.x + residual
 
-                # Concatenate graph features with demographic features
-                combined = torch.cat([data.x, demo_expanded], dim=1)
-
-                # Downsize through 2-layer MLP
-                data.x = self.downsize_mlps[i](combined)
-            
-            # Apply normalization and activation (except for last layer)
             if i < self.layers_num - 1:
                 data.x = self.batch_norms[i](data.x)
                 data.x = self.activations[i](data.x)
 
-
-        # Global pooling and regression
         graph_features = global_mean_pool(data.x, data.batch)
-        x = self.classifier(graph_features)
+
+        # Process demographic features through linear layer and concatenate
+        if self.include_demo and hasattr(data, 'demographics'):
+            demo_features = self.demo_projection(data.demographics)
+            combined_features = torch.cat([graph_features, demo_features], dim=1)
+        else:
+            combined_features = graph_features
+
+        x = self.classifier(combined_features)
 
         # Changed for regression:
         if self.out_dim == 1:
@@ -140,7 +140,7 @@ class GATv2ConvNet(torch.nn.Module):
         self.input_projection = torch.nn.Linear(embedding_dim, hidden_dim)
 
 
-        # All conv layers have same input/output dimensions
+        # All conv layers have same input/output dimensions for residual connections
         self.conv_layers = torch.nn.ModuleList([
             GATv2Conv(
                 in_channels=hidden_dim,
@@ -153,64 +153,64 @@ class GATv2ConvNet(torch.nn.Module):
             ) for _ in range(layers_num)
         ])
 
-
-        if self.include_demo:
-            # 1-layer MLP for demographic data at each layer
-            self.demo_mlps = torch.nn.ModuleList([
-                torch.nn.Linear(self.demo_dim, 16) for _ in range(self.layers_num)
-            ])
-
-            # 2-layer MLP to downsize concatenated features
-            self.downsize_mlps = torch.nn.ModuleList([
-                torch.nn.Sequential(
-                    torch.nn.Linear(hidden_dim + 16, hidden_dim * 2),
-                    torch.nn.LeakyReLU(),
-                    torch.nn.Linear(hidden_dim * 2, hidden_dim)
-                ) for _ in range(self.layers_num)
-            ])
-
-
         # Add batch normalization layers
         self.batch_norms = torch.nn.ModuleList([
             pyg_nn.norm.GraphNorm(hidden_dim) for _ in range(layers_num - 1)
         ])
 
         # self.activations = torch.nn.ModuleList([
-        #     torch.nn.LeakyReLU() for _ in range(layers_num - 1)
+        #     torch.nn.LeakyReLU(),
+        #     torch.nn.LeakyReLU()
         # ])
 
-        self.classifier = torch.nn.Linear(hidden_dim, out_dim)
+        # Calculate final feature dimension
+        graph_features_dim = hidden_dim
+
+        if self.include_demo:
+            self.demo_projection = torch.nn.Linear(self.demo_dim, 16)
+            total_features_dim = graph_features_dim + 16
+        else:
+            total_features_dim = graph_features_dim
+
+        self.classifier = torch.nn.Sequential(
+            torch.nn.Linear(total_features_dim, 64),
+            torch.nn.BatchNorm1d(64),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(0.1),
+            torch.nn.Linear(64, 32),
+            torch.nn.BatchNorm1d(32),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(0.1),
+            torch.nn.Linear(32, out_dim)
+        )
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
         data.x = self.input_projection(data.x)
 
         for i in range(self.layers_num):
-            # Apply graph convolution
+            # Store input for residual connection
+            residual = data.x
+            
             edge_attr = data.edge_attr
             data.x = self.conv_layers[i](data.x, data.edge_index, edge_attr=edge_attr)
             
-            if self.include_demo and hasattr(data, 'demographics'):
-                # Process demographics through 1-layer MLP
-                demo_features = self.demo_mlps[i](data.demographics)
-                
-                # Expand demographics to match number of nodes
-                nodes_per_graph = torch.bincount(data.batch)
-                demo_expanded = torch.repeat_interleave(demo_features, nodes_per_graph, dim=0)
-                
-                # Concatenate graph features with demographic features
-                combined = torch.cat([data.x, demo_expanded], dim=1)
-                
-                # Downsize through 2-layer MLP
-                data.x = self.downsize_mlps[i](combined)
+            # Add residual connection
+            data.x = data.x + residual
 
-            # Apply normalization (except for last layer)
             if i < self.layers_num - 1:
                 data.x = self.batch_norms[i](data.x)
 
-        # Global pooling and regression
         graph_features = global_mean_pool(data.x, data.batch)
-        x = self.classifier(graph_features)
+
+        # Process demographic features through linear layer and concatenate
+        if self.include_demo and hasattr(data, 'demographics'):
+            demo_features = self.demo_projection(data.demographics)
+            combined_features = torch.cat([graph_features, demo_features], dim=1)
+        else:
+            combined_features = graph_features
+
+        x = self.classifier(combined_features)
 
         # Changed for regression:
         if self.out_dim == 1:
