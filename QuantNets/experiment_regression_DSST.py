@@ -184,11 +184,11 @@ class ExperimentRegression:
         self.sgcn_model_optimizer = None
         
         if self.cnn_model_exists:
-            self.cnn_model_optimizer = torch.optim.AdamW(self.cnn_model.parameters(), lr=learning_rate, weight_decay=0.001)
+            self.cnn_model_optimizer = torch.optim.AdamW(self.cnn_model.parameters(), lr=learning_rate, weight_decay=0.0001)
         if self.qgcn_model_exists:
-            self.qgcn_model_optimizer = torch.optim.AdamW(self.qgcn_model.parameters(), lr=learning_rate, weight_decay=0.001)
+            self.qgcn_model_optimizer = torch.optim.AdamW(self.qgcn_model.parameters(), lr=learning_rate, weight_decay=0.0001)
         if self.sgcn_model_exists:
-            self.sgcn_model_optimizer = torch.optim.AdamW(self.sgcn_model.parameters(), lr=learning_rate, weight_decay=0.001)
+            self.sgcn_model_optimizer = torch.optim.AdamW(self.sgcn_model.parameters(), lr=learning_rate, weight_decay=0.0001)
 
         # Add learning rate schedulers
         self.cnn_model_scheduler = None

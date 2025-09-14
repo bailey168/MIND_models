@@ -136,33 +136,30 @@ class GATv2ConvNet(torch.nn.Module):
 
         self.conv_layers = [GATv2Conv(
                                     in_channels=embedding_dim,
-                                    out_channels=64,
+                                    out_channels=16,
                                     heads=4,
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
-                                    dropout=0.3,
-                                    concat=False
+                                    dropout=0.1
                                     )] + \
                            [GATv2Conv(
                                     in_channels=64,
-                                    out_channels=64,
+                                    out_channels=16,
                                     heads=4,
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
-                                    dropout=0.3,
-                                    concat=False
+                                    dropout=0.1
                                     )] + \
                            [GATv2Conv(
                                     in_channels=64,
-                                    out_channels=64,
+                                    out_channels=16,
                                     heads=4,
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
-                                    dropout=0.3,
-                                    concat=False
+                                    dropout=0.1
                                     )]
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
@@ -187,11 +184,11 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.Linear(total_features_dim, 64),
             torch.nn.BatchNorm1d(64),
             torch.nn.LeakyReLU(),
-            torch.nn.Dropout(0.3),
+            torch.nn.Dropout(0.1),
             torch.nn.Linear(64, 32),
             torch.nn.BatchNorm1d(32),
             torch.nn.LeakyReLU(),
-            torch.nn.Dropout(0.3),
+            torch.nn.Dropout(0.1),
             torch.nn.Linear(32, out_dim)
         )
 
