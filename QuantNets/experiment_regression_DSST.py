@@ -733,6 +733,9 @@ class ExperimentRegression:
                 self.qgcn_early_stopping.restore_weights(self.qgcn_model)
             if self.sgcn_early_stopping is not None and self.sgcn_early_stopping.restore_best_weights:
                 self.sgcn_early_stopping.restore_weights(self.sgcn_model)
+                # Cache the restored model
+                if self.cache_run:
+                    self.__cache_models()
 
         # Cache results if we need to
         if self.cache_run:
