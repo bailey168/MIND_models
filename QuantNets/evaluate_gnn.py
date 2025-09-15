@@ -72,22 +72,43 @@ class ModelEvaluator:
                 print(f"Loaded model from epoch: {checkpoint.get('final_epoch', 'unknown')}")
                 print(f"Model type: {checkpoint.get('model_config', {}).get('model_type', 'unknown')}")
                 
-                # Here you'd need to reconstruct your model architecture
-                # This depends on your specific model configuration
-                model = self._reconstruct_model_from_checkpoint(checkpoint)
-                model.load_state_dict(checkpoint['model_state_dict'])
-                return model.to(self.device)
+                # Try to load the complete model file instead
+                complete_model_path = os.path.join(model_dir, "model_complete.pth")
+                if os.path.exists(complete_model_path):
+                    print(f"Loading complete model from: {complete_model_path}")
+                    model = torch.load(complete_model_path, map_location=self.device, weights_only=False)
+                    return model
+                else:
+                    print("Complete model file not found, trying to reconstruct from state dict")
+                    # We need to reconstruct the model - this requires knowing the architecture
+                    # For now, let's try the complete model approach
+                    raise Exception("Cannot reconstruct model from state dict without architecture info")
         except Exception as e:
             print(f"Failed to load with metadata: {e}")
         
-        # Method 2: Try loading the complete model directly
+        # Method 2: Try loading the complete model directly  
         try:
-            model = torch.load(model_path, map_location=self.device, weights_only=False)
-            print(f"Loaded complete model (epoch info not available in this format)")
-            return model
+            complete_model_path = os.path.join(model_dir, "model_complete.pth")
+            if os.path.exists(complete_model_path):
+                print(f"Loading complete model from: {complete_model_path}")
+                model = torch.load(complete_model_path, map_location=self.device, weights_only=False)
+                print(f"Loaded complete model successfully")
+                return model
         except Exception as e:
             print(f"Failed to load complete model: {e}")
         
+        # Method 3: Try loading the original model.pth as a complete model
+        try:
+            print(f"Attempting to load {model_path} as complete model...")
+            model = torch.load(model_path, map_location=self.device, weights_only=False)
+            if hasattr(model, 'eval'):  # Check if it's actually a model
+                print(f"Loaded model directly from {model_path}")
+                return model
+            else:
+                print(f"Loaded object is not a model (type: {type(model)})")
+        except Exception as e:
+            print(f"Failed to load model directly: {e}")
+    
         raise ValueError(f"Could not load model from {model_path}")
 
     def _move_data_to_device(self, data):

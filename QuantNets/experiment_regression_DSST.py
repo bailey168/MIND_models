@@ -406,6 +406,9 @@ class ExperimentRegression:
     def __cache_models(self):
         """Cache models with epoch information."""
         if self.qgcn_model_exists:
+            # Save complete model first (most reliable for loading)
+            torch.save(self.qgcn_model, os.path.join(self.qgcn_specific_run_dir, "model_complete.pth"))
+            
             # Save model with metadata including epoch info
             qgcn_save_dict = {
                 'model_state_dict': self.qgcn_model.state_dict(),
@@ -418,9 +421,6 @@ class ExperimentRegression:
             }
             torch.save(qgcn_save_dict, os.path.join(self.qgcn_specific_run_dir, "model.pth"))
             
-            # Also save just the model for backward compatibility
-            torch.save(self.qgcn_model, os.path.join(self.qgcn_specific_run_dir, "model_complete.pth"))
-            
             # Save epoch info in a separate text file for easy reading
             with open(os.path.join(self.qgcn_specific_run_dir, "training_info.txt"), 'w') as f:
                 f.write(f"Final training epoch: {getattr(self, 'final_qgcn_epoch', 0)}\n")
@@ -430,6 +430,9 @@ class ExperimentRegression:
                     f.write(f"Early stopped: {'Yes' if self.qgcn_early_stopping.early_stop else 'No'}\n")
 
         if self.sgcn_model_exists:
+            # Save complete model first (most reliable for loading)
+            torch.save(self.sgcn_model, os.path.join(self.sgcn_specific_run_dir, "model_complete.pth"))
+            
             # Save model with metadata including epoch info
             sgcn_save_dict = {
                 'model_state_dict': self.sgcn_model.state_dict(),
@@ -441,9 +444,6 @@ class ExperimentRegression:
                 }
             }
             torch.save(sgcn_save_dict, os.path.join(self.sgcn_specific_run_dir, "model.pth"))
-            
-            # Also save just the model for backward compatibility
-            torch.save(self.sgcn_model, os.path.join(self.sgcn_specific_run_dir, "model_complete.pth"))
             
             # Save epoch info in a separate text file for easy reading
             with open(os.path.join(self.sgcn_specific_run_dir, "training_info.txt"), 'w') as f:
