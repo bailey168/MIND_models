@@ -14,7 +14,7 @@ epochs:
   dsst_custom:
     - 500
   gf_custom:
-    - 251
+    - 200
 
 # Number of runs for statistical significance
 runs:
@@ -50,8 +50,8 @@ schedulers:
     # Warmup Cosine: Linear warmup followed by cosine decay
     - scheduler: "warmup_cosine"
       scheduler_params:
-        num_warmup_steps: 25
-        num_training_steps: 251
+        num_warmup_steps: 20
+        num_training_steps: 200
         num_cycles: 0.5
         last_epoch: -1
 
