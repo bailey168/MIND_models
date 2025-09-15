@@ -34,22 +34,22 @@ class ExperimentRegression:
     experiment_id = 1 # static variable for creating experiments dir ...
 
     def __init__(self, 
-                 sgcn_model = None, 
-                 qgcn_model = None, 
-                 cnn_model = None,
-                 optim_params = None, 
-                 base_path = ".", 
-                 num_train = None,
-                 num_test = None,
-                 dataset_name = None,
-                 train_batch_size = 64,
-                 test_batch_size = 64,
-                 train_shuffle_data = True,
-                 test_shuffle_data = False,
-                 profile_run = False,
-                 walk_clock_num_runs = 10,
-                 id = None,
-                 early_stopping_config = None):  # Add early stopping config
+                sgcn_model = None, 
+                qgcn_model = None, 
+                cnn_model = None,
+                optim_params = None, 
+                base_path = ".", 
+                num_train = None,
+                num_test = None,
+                dataset_name = None,
+                train_batch_size = 64,
+                test_batch_size = 64,
+                train_shuffle_data = True,
+                test_shuffle_data = False,
+                profile_run = False,
+                walk_clock_num_runs = 10,
+                id = None,
+                early_stopping_config = None):  # Add early stopping config
         
         # Controls whether we want to print runtime per model
         self.profile_run = profile_run
@@ -207,6 +207,34 @@ class ExperimentRegression:
         if self.sgcn_model_exists:
             self.sgcn_model_scheduler = self._create_scheduler(self.sgcn_model_optimizer, scheduler_type, scheduler_params)
 
+        # Add early stopping configuration
+        self.early_stopping_config = early_stopping_config or {}
+        self.use_early_stopping = self.early_stopping_config.get('enabled', False)
+        
+        if self.use_early_stopping:
+            # Initialize early stopping for each model
+            es_patience = self.early_stopping_config.get('patience', 20)
+            es_min_delta = self.early_stopping_config.get('min_delta', 0.0001)
+            es_restore_weights = self.early_stopping_config.get('restore_best_weights', True)
+            es_verbose = self.early_stopping_config.get('verbose', True)
+            
+            self.qgcn_early_stopping = EarlyStopping(
+                patience=es_patience,
+                min_delta=es_min_delta,
+                restore_best_weights=es_restore_weights,
+                verbose=es_verbose
+            ) if self.qgcn_model_exists else None
+            
+            self.sgcn_early_stopping = EarlyStopping(
+                patience=es_patience,
+                min_delta=es_min_delta,
+                restore_best_weights=es_restore_weights,
+                verbose=es_verbose
+            ) if self.sgcn_model_exists else None
+        else:
+            self.qgcn_early_stopping = None
+            self.sgcn_early_stopping = None
+
         # Print model statistics if profiling
         if self.profile_run: 
             self.__print_models_stats()
@@ -342,7 +370,7 @@ class ExperimentRegression:
         if not os.path.exists(base_path):
             print("Ensure that your base path exists -> {}".format(base_path))
             sys.exit(1)
-        experiments_dir = os.path.join(base_path, "Experiments_FC_09_14_optgat")
+        experiments_dir = os.path.join(base_path, "Experiments_FC_09_15_test")
         if not os.path.exists(experiments_dir):
             os.mkdir(experiments_dir)
         underscored_experiment_id = "_".join(str(experiment_id).strip().split(" "))
@@ -478,11 +506,11 @@ class ExperimentRegression:
             data.demographics = data.demographics.to(self.device)
         return data
 
-    def __train(self):
-        """Train models for one epoch."""
+    def __train(self, train_qgcn=True, train_sgcn=True):
+        """Train models for one epoch with selective training."""
         # For QGCN training
         qgcn_loss_all, qgcn_total_graphs = 0, 0
-        if self.qgcn_model_exists:
+        if self.qgcn_model_exists and train_qgcn:
             self.qgcn_model.train()
             if self.profile_run: start_time = time.time()
             for data in self.sp_qgcn_train_dataloader:
@@ -502,7 +530,7 @@ class ExperimentRegression:
 
         # For SGCN training
         sgcn_loss_all, sgcn_total_graphs = 0, 0
-        if self.sgcn_model_exists:
+        if self.sgcn_model_exists and train_sgcn:
             self.sgcn_model.train()
             if self.profile_run: start_time = time.time()
             for data in self.sp_sgcn_train_dataloader:
@@ -525,9 +553,9 @@ class ExperimentRegression:
             self.__cache_models()
 
         # Normalize loss by the total length of training set
-        if self.qgcn_model_exists:
+        if self.qgcn_model_exists and qgcn_total_graphs > 0:
             qgcn_loss_all /= qgcn_total_graphs
-        if self.sgcn_model_exists:
+        if self.sgcn_model_exists and sgcn_total_graphs > 0:
             sgcn_loss_all /= sgcn_total_graphs
 
         return qgcn_loss_all, sgcn_loss_all
@@ -611,6 +639,12 @@ class ExperimentRegression:
             start_time = time.time()
             print("training... epoch {}".format(epoch))
             
+            # UPDATE FINAL EPOCHS FOR MODELS STILL TRAINING - ADD THIS HERE
+            if qgcn_continue_training:
+                final_qgcn_epoch = epoch
+            if sgcn_continue_training:
+                final_sgcn_epoch = epoch
+            
             # Train models (only if they haven't stopped early)
             qgcn_loss, sgcn_loss = self.__train(
                 train_qgcn=qgcn_continue_training, 
@@ -688,6 +722,10 @@ class ExperimentRegression:
                 print("{}".format("".join([epoch_str, loss_str, train_mse_str, test_mse_str, lr_str])))
             
             print(f"Epoch took a total of {stop_time - start_time}s")
+
+        # SAVE FINAL EPOCH INFORMATION - ADD THIS HERE (after the training loop)
+        self.final_qgcn_epoch = final_qgcn_epoch
+        self.final_sgcn_epoch = final_sgcn_epoch
 
         # Restore best weights if early stopping was used
         if self.use_early_stopping:
