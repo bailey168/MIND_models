@@ -16,7 +16,7 @@ from torch_geometric.loader import DataLoader as GraphDataLoader
 from util.schedulers import get_cosine_schedule_with_warmup
 
 from util.data_processing import *
-
+from util.early_stopping import EarlyStopping
 
 # define a wrapper time_it decorator function
 def time_it(func):
@@ -48,7 +48,8 @@ class ExperimentRegression:
                  test_shuffle_data = False,
                  profile_run = False,
                  walk_clock_num_runs = 10,
-                 id = None):
+                 id = None,
+                 early_stopping_config = None):  # Add early stopping config
         
         # Controls whether we want to print runtime per model
         self.profile_run = profile_run
@@ -184,11 +185,11 @@ class ExperimentRegression:
         self.sgcn_model_optimizer = None
         
         if self.cnn_model_exists:
-            self.cnn_model_optimizer = torch.optim.AdamW(self.cnn_model.parameters(), lr=learning_rate, weight_decay=0.0001)
+            self.cnn_model_optimizer = torch.optim.AdamW(self.cnn_model.parameters(), lr=learning_rate, weight_decay=0.001)
         if self.qgcn_model_exists:
-            self.qgcn_model_optimizer = torch.optim.AdamW(self.qgcn_model.parameters(), lr=learning_rate, weight_decay=0.0001)
+            self.qgcn_model_optimizer = torch.optim.AdamW(self.qgcn_model.parameters(), lr=learning_rate, weight_decay=0.001)
         if self.sgcn_model_exists:
-            self.sgcn_model_optimizer = torch.optim.AdamW(self.sgcn_model.parameters(), lr=learning_rate, weight_decay=0.0001)
+            self.sgcn_model_optimizer = torch.optim.AdamW(self.sgcn_model.parameters(), lr=learning_rate, weight_decay=0.001)
 
         # Add learning rate schedulers
         self.cnn_model_scheduler = None
@@ -375,46 +376,54 @@ class ExperimentRegression:
             print(f"Warning: Could not copy architecture files: {e}")
 
     def __cache_models(self):
-        """Save trained models to disk with architecture information."""
-        if self.qgcn_specific_run_dir != None and self.qgcn_model_exists:
-            qgcn_model_filepath = os.path.join(self.qgcn_specific_run_dir, "model.pth")
-            
-            # Save complete model (for backward compatibility)
-            torch.save(self.qgcn_model, qgcn_model_filepath)
-            
-            # Save model metadata for robust loading
-            metadata = {
+        """Cache models with epoch information."""
+        if self.qgcn_model_exists:
+            # Save model with metadata including epoch info
+            qgcn_save_dict = {
                 'model_state_dict': self.qgcn_model.state_dict(),
-                'model_class': self.qgcn_model.__class__.__name__,
+                'optimizer_state_dict': self.qgcn_model_optimizer.state_dict(),
+                'final_epoch': getattr(self, 'final_qgcn_epoch', 0),
                 'model_config': {
-                    'out_dim': getattr(self.qgcn_model, 'out_dim', 1),
-                    'include_demo': getattr(self.qgcn_model, 'include_demo', True),
-                    'demo_dim': getattr(self.qgcn_model, 'demo_dim', 4),
-                    'layers_num': getattr(self.qgcn_model, 'layers_num', 3)
+                    'model_type': type(self.qgcn_model).__name__,
+                    'architecture': str(self.qgcn_model)
                 }
             }
-            metadata_filepath = os.path.join(self.qgcn_specific_run_dir, "model_metadata.pth")
-            torch.save(metadata, metadata_filepath)
+            torch.save(qgcn_save_dict, os.path.join(self.qgcn_specific_run_dir, "model.pth"))
             
-        if self.sgcn_specific_run_dir != None and self.sgcn_model_exists:
-            sgcn_model_filepath = os.path.join(self.sgcn_specific_run_dir, "model.pth")
+            # Also save just the model for backward compatibility
+            torch.save(self.qgcn_model, os.path.join(self.qgcn_specific_run_dir, "model_complete.pth"))
             
-            # Save complete model (for backward compatibility)
-            torch.save(self.sgcn_model, sgcn_model_filepath)
-            
-            # Save model metadata for robust loading
-            metadata = {
+            # Save epoch info in a separate text file for easy reading
+            with open(os.path.join(self.qgcn_specific_run_dir, "training_info.txt"), 'w') as f:
+                f.write(f"Final training epoch: {getattr(self, 'final_qgcn_epoch', 0)}\n")
+                f.write(f"Model type: {type(self.qgcn_model).__name__}\n")
+                f.write(f"Early stopping: {'Yes' if self.use_early_stopping else 'No'}\n")
+                if self.use_early_stopping and hasattr(self, 'qgcn_early_stopping'):
+                    f.write(f"Early stopped: {'Yes' if self.qgcn_early_stopping.early_stop else 'No'}\n")
+
+        if self.sgcn_model_exists:
+            # Save model with metadata including epoch info
+            sgcn_save_dict = {
                 'model_state_dict': self.sgcn_model.state_dict(),
-                'model_class': self.sgcn_model.__class__.__name__,
+                'optimizer_state_dict': self.sgcn_model_optimizer.state_dict(),
+                'final_epoch': getattr(self, 'final_sgcn_epoch', 0),
                 'model_config': {
-                    'out_dim': getattr(self.sgcn_model, 'out_dim', 1),
-                    'include_demo': getattr(self.sgcn_model, 'include_demo', True),
-                    'demo_dim': getattr(self.sgcn_model, 'demo_dim', 4),
-                    'layers_num': getattr(self.sgcn_model, 'layers_num', 3)
+                    'model_type': type(self.sgcn_model).__name__,
+                    'architecture': str(self.sgcn_model)
                 }
             }
-            metadata_filepath = os.path.join(self.sgcn_specific_run_dir, "model_metadata.pth")
-            torch.save(metadata, metadata_filepath)
+            torch.save(sgcn_save_dict, os.path.join(self.sgcn_specific_run_dir, "model.pth"))
+            
+            # Also save just the model for backward compatibility
+            torch.save(self.sgcn_model, os.path.join(self.sgcn_specific_run_dir, "model_complete.pth"))
+            
+            # Save epoch info in a separate text file for easy reading
+            with open(os.path.join(self.sgcn_specific_run_dir, "training_info.txt"), 'w') as f:
+                f.write(f"Final training epoch: {getattr(self, 'final_sgcn_epoch', 0)}\n")
+                f.write(f"Model type: {type(self.sgcn_model).__name__}\n")
+                f.write(f"Early stopping: {'Yes' if self.use_early_stopping else 'No'}\n")
+                if self.use_early_stopping and hasattr(self, 'sgcn_early_stopping'):
+                    f.write(f"Early stopped: {'Yes' if self.sgcn_early_stopping.early_stop else 'No'}\n")
 
     def __cache_results(self, train_qgcn_loss_array, train_sgcn_loss_array, 
                         train_qgcn_mse_array, train_sgcn_mse_array,
@@ -569,7 +578,7 @@ class ExperimentRegression:
 
     @time_it
     def run(self, num_epochs=None, eval_training_set=True, run_evaluation=True):
-        """Run the complete training and evaluation loop."""
+        """Run the complete training and evaluation loop with early stopping."""
         if num_epochs == None or num_epochs <= 0:
             print("num_epochs ({}) in [ExperimentRegression.run] is invalid".format(num_epochs))
             sys.exit(1)
@@ -581,15 +590,32 @@ class ExperimentRegression:
         learning_rates_qgcn, learning_rates_sgcn = [], []
         
         print("Starting Brain Connectivity Regression Training...")
-        print(f"Training for {num_epochs} epochs")
+        print(f"Training for up to {num_epochs} epochs")
         print(f"Models: QGCN={self.qgcn_model_exists}, SGCN={self.sgcn_model_exists}")
+        print(f"Early Stopping: {'Enabled' if self.use_early_stopping else 'Disabled'}")
+        
+        if self.use_early_stopping:
+            print(f"Early Stopping Config: patience={self.early_stopping_config.get('patience', 20)}, "
+                  f"min_delta={self.early_stopping_config.get('min_delta', 0.0001)}")
+        
+        # Flags to track if models should continue training
+        qgcn_continue_training = self.qgcn_model_exists
+        sgcn_continue_training = self.sgcn_model_exists
+        
+        # Track final epochs for each model
+        final_qgcn_epoch = 0
+        final_sgcn_epoch = 0
         
         for epoch in range(1, num_epochs + 1):
             # Time epoch operations
             start_time = time.time()
             print("training... epoch {}".format(epoch))
             
-            qgcn_loss, sgcn_loss = self.__train()
+            # Train models (only if they haven't stopped early)
+            qgcn_loss, sgcn_loss = self.__train(
+                train_qgcn=qgcn_continue_training, 
+                train_sgcn=sgcn_continue_training
+            )
             train_qgcn_loss_array.append(qgcn_loss)
             train_sgcn_loss_array.append(sgcn_loss)
             
@@ -603,17 +629,17 @@ class ExperimentRegression:
             test_qgcn_mse_array.append(test_qgcn_mse)
             test_sgcn_mse_array.append(test_sgcn_mse)
             
-            # Step schedulers and record learning rates
+            # Step schedulers and record learning rates (only for models still training)
             current_lr_qgcn, current_lr_sgcn = 0, 0
             
-            if self.qgcn_model_scheduler is not None:
+            if self.qgcn_model_scheduler is not None and qgcn_continue_training:
                 if isinstance(self.qgcn_model_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                     self.qgcn_model_scheduler.step(test_qgcn_mse)
                 else:
                     self.qgcn_model_scheduler.step()
                 current_lr_qgcn = self.qgcn_model_optimizer.param_groups[0]['lr']
             
-            if self.sgcn_model_scheduler is not None:
+            if self.sgcn_model_scheduler is not None and sgcn_continue_training:
                 if isinstance(self.sgcn_model_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                     self.sgcn_model_scheduler.step(test_sgcn_mse)
                 else:
@@ -622,6 +648,23 @@ class ExperimentRegression:
             
             learning_rates_qgcn.append(current_lr_qgcn)
             learning_rates_sgcn.append(current_lr_sgcn)
+            
+            # Check early stopping conditions
+            if self.use_early_stopping:
+                if qgcn_continue_training and self.qgcn_early_stopping is not None:
+                    if self.qgcn_early_stopping(test_qgcn_mse, self.qgcn_model):
+                        print(f"QGCN early stopping triggered at epoch {epoch}")
+                        qgcn_continue_training = False
+                
+                if sgcn_continue_training and self.sgcn_early_stopping is not None:
+                    if self.sgcn_early_stopping(test_sgcn_mse, self.sgcn_model):
+                        print(f"SGCN early stopping triggered at epoch {epoch}")
+                        sgcn_continue_training = False
+                
+                # If both models have stopped, break the training loop
+                if not qgcn_continue_training and not sgcn_continue_training:
+                    print(f"All models stopped early at epoch {epoch}. Ending training.")
+                    break
             
             stop_time = time.time()
 
@@ -632,9 +675,26 @@ class ExperimentRegression:
             test_mse_str = "QGCN_Test_MSE: {:.5f}, SGCN_Test_MSE: {:.5f}, ".format(test_qgcn_mse, test_sgcn_mse)
             lr_str = "QGCN_LR: {:.2e}, SGCN_LR: {:.2e}".format(current_lr_qgcn, current_lr_sgcn)
             
-            # Print out the results
-            print("{}".format("".join([epoch_str, loss_str, train_mse_str, test_mse_str, lr_str])))
+            # Add early stopping status
+            if self.use_early_stopping:
+                es_str = "ES_QGCN: {}/{}, ES_SGCN: {}/{}".format(
+                    self.qgcn_early_stopping.counter if self.qgcn_early_stopping else 0,
+                    self.qgcn_early_stopping.patience if self.qgcn_early_stopping else 0,
+                    self.sgcn_early_stopping.counter if self.sgcn_early_stopping else 0,
+                    self.sgcn_early_stopping.patience if self.sgcn_early_stopping else 0
+                )
+                print("{}".format("".join([epoch_str, loss_str, train_mse_str, test_mse_str, lr_str, ", ", es_str])))
+            else:
+                print("{}".format("".join([epoch_str, loss_str, train_mse_str, test_mse_str, lr_str])))
+            
             print(f"Epoch took a total of {stop_time - start_time}s")
+
+        # Restore best weights if early stopping was used
+        if self.use_early_stopping:
+            if self.qgcn_early_stopping is not None and self.qgcn_early_stopping.restore_best_weights:
+                self.qgcn_early_stopping.restore_weights(self.qgcn_model)
+            if self.sgcn_early_stopping is not None and self.sgcn_early_stopping.restore_best_weights:
+                self.sgcn_early_stopping.restore_weights(self.sgcn_model)
 
         # Cache results if we need to
         if self.cache_run:
@@ -645,7 +705,8 @@ class ExperimentRegression:
                 learning_rates_qgcn, learning_rates_sgcn
             )
         
-        print("Brain Connectivity Regression Training Complete!")
+        final_epoch = len(train_qgcn_loss_array)
+        print(f"Brain Connectivity Regression Training Complete! (Stopped at epoch {final_epoch})")
         
         # Run evaluation if requested
         evaluation_results = None
@@ -660,7 +721,14 @@ class ExperimentRegression:
             'test_qgcn_mse': test_qgcn_mse_array,
             'test_sgcn_mse': test_sgcn_mse_array,
             'learning_rates_qgcn': learning_rates_qgcn,
-            'learning_rates_sgcn': learning_rates_sgcn
+            'learning_rates_sgcn': learning_rates_sgcn,
+            'final_qgcn_epoch': final_qgcn_epoch,
+            'final_sgcn_epoch': final_sgcn_epoch,
+            'total_planned_epochs': num_epochs,
+            'early_stopped': self.use_early_stopping and (
+                (self.qgcn_early_stopping and self.qgcn_early_stopping.early_stop) or
+                (self.sgcn_early_stopping and self.sgcn_early_stopping.early_stop)
+            )
         }
         
         if evaluation_results:

@@ -61,7 +61,7 @@ def create_model(model_type, dataset_config):
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
-def run_single_experiment(dataset_config, split_config, run_settings, epochs, scheduler_config, config_idx, model_type, run_evaluation=True):
+def run_single_experiment(dataset_config, split_config, run_settings, epochs, scheduler_config, config_idx, model_type, run_evaluation=True, early_stopping_config=None):
     """Run a single experiment with given configuration."""
     
     print(f"\n{'='*80}")
@@ -71,6 +71,7 @@ def run_single_experiment(dataset_config, split_config, run_settings, epochs, sc
     print(f"Epochs: {epochs}")
     print(f"Train/Test Split: {split_config['train']}/{split_config['test']}")
     print(f"Scheduler: {scheduler_config.get('scheduler', 'none')}")
+    print(f"Early Stopping: {'Enabled' if early_stopping_config and early_stopping_config.get('enabled', False) else 'Disabled'}")
     print(f"Run Evaluation: {run_evaluation}")
     print(f"{'='*80}\n")
     
@@ -82,7 +83,8 @@ def run_single_experiment(dataset_config, split_config, run_settings, epochs, sc
     optim_params.update(scheduler_config)
     
     # Create unique experiment ID
-    experiment_id = f"{TARGET}_regression_{model_type}_config_{config_idx + 1}_lr_{run_settings}_epochs_{epochs}_scheduler_{scheduler_config.get('scheduler', 'none')}"
+    early_stop_suffix = "_ES" if early_stopping_config and early_stopping_config.get('enabled', False) else ""
+    experiment_id = f"{TARGET}_regression_{model_type}_config_{config_idx + 1}_lr_{run_settings}_epochs_{epochs}_scheduler_{scheduler_config.get('scheduler', 'none')}{early_stop_suffix}"
     
     # Setup experiment
     experiment = ExperimentRegression(
@@ -99,29 +101,53 @@ def run_single_experiment(dataset_config, split_config, run_settings, epochs, sc
         train_shuffle_data=True,
         test_shuffle_data=False,
         profile_run=False,
-        id=experiment_id
+        id=experiment_id,
+        early_stopping_config=early_stopping_config
     )
     
     # Run experiment with evaluation
     results = experiment.run(num_epochs=epochs, eval_training_set=True, run_evaluation=run_evaluation)
     
-    # Save experiment configuration for evaluation script
+    # Create a summary file with detailed information including final epoch
     if hasattr(experiment, 'sgcn_specific_run_dir') and experiment.sgcn_specific_run_dir:
+        # Save experiment configuration for evaluation script
         experiment_config = {
             'dataset_config': dataset_config,
             'split_config': split_config,
             'model_type': model_type,
             'experiment_id': experiment_id,
             'run_settings': run_settings,
-            'epochs': epochs,
-            'scheduler_config': scheduler_config
+            'planned_epochs': epochs,
+            'actual_final_epoch': results.get('final_sgcn_epoch', epochs),
+            'early_stopped': results.get('early_stopped', False),
+            'scheduler_config': scheduler_config,
+            'early_stopping_config': early_stopping_config
         }
         config_path = os.path.join(experiment.sgcn_specific_run_dir, "experiment_config.yaml")
-        import yaml
         with open(config_path, 'w') as f:
             yaml.dump(experiment_config, f)
+        
+        # Create a human-readable summary
+        summary_path = os.path.join(experiment.sgcn_specific_run_dir, "experiment_summary.txt")
+        with open(summary_path, 'w') as f:
+            f.write(f"Experiment Summary\n")
+            f.write(f"==================\n\n")
+            f.write(f"Model Type: {model_type}\n")
+            f.write(f"Learning Rate: {run_settings}\n")
+            f.write(f"Planned Epochs: {epochs}\n")
+            f.write(f"Actual Final Epoch: {results.get('final_sgcn_epoch', epochs)}\n")
+            f.write(f"Early Stopped: {'Yes' if results.get('early_stopped', False) else 'No'}\n")
+            f.write(f"Scheduler: {scheduler_config.get('scheduler', 'none')}\n")
+            f.write(f"Final Test MSE: {results['test_sgcn_mse'][-1]:.5f}\n")
+            
+            if 'evaluation' in results and results['evaluation']:
+                eval_results = results['evaluation']
+                f.write(f"Test R² Score: {eval_results['test_results']['r2_score']:.4f}\n")
+                f.write(f"Test RMSE: {eval_results['test_results']['rmse']:.4f}\n")
     
     print(f"\nExperiment {config_idx + 1} completed!")
+    print(f"Planned epochs: {epochs}, Actual final epoch: {results.get('final_sgcn_epoch', epochs)}")
+    print(f"Early stopped: {'Yes' if results.get('early_stopped', False) else 'No'}")
     print(f"Final Test MSE: SGCN={results['test_sgcn_mse'][-1]:.5f}")
     
     # Print evaluation summary if available
@@ -149,9 +175,10 @@ def run_all_dsst_experiments(model_type, run_evaluation=True):
     learning_rates = run_config['lrs']['gf_custom']
     epochs_list = run_config['epochs']['gf_custom']
     schedulers = run_config.get('schedulers', {}).get('gf_custom', [{}] * len(learning_rates))
+    early_stopping_configs = run_config.get('early_stopping', {}).get('gf_custom', [{}] * len(learning_rates))
 
     # Validate that all lists have the same length
-    config_lengths = [len(splits), len(learning_rates), len(epochs_list), len(schedulers)]
+    config_lengths = [len(splits), len(learning_rates), len(epochs_list), len(schedulers), len(early_stopping_configs)]
     if len(set(config_lengths)) > 1:
         print(f"Warning: Configuration lists have different lengths: {config_lengths}")
         min_length = min(config_lengths)
@@ -160,6 +187,7 @@ def run_all_dsst_experiments(model_type, run_evaluation=True):
         learning_rates = learning_rates[:min_length]
         epochs_list = epochs_list[:min_length]
         schedulers = schedulers[:min_length]
+        early_stopping_configs = early_stopping_configs[:min_length]
     
     num_experiments = len(splits)
     print(f"Running {num_experiments} experiments total with {model_type} model")
@@ -178,7 +206,8 @@ def run_all_dsst_experiments(model_type, run_evaluation=True):
                 scheduler_config=schedulers[i],
                 config_idx=i,
                 model_type=model_type,
-                run_evaluation=run_evaluation
+                run_evaluation=run_evaluation,
+                early_stopping_config=early_stopping_configs[i]
             )
             all_results.append({
                 'config_idx': i,
@@ -240,6 +269,7 @@ def run_specific_experiments(config_indices, model_type, run_evaluation=True):
     learning_rates = run_config['lrs']['gf_custom']
     epochs_list = run_config['epochs']['gf_custom']
     schedulers = run_config.get('schedulers', {}).get('gf_custom', [{}] * len(learning_rates))
+    early_stopping_configs = run_config.get('early_stopping', {}).get('gf_custom', [{}] * len(learning_rates))
 
     results = []
     
@@ -257,7 +287,8 @@ def run_specific_experiments(config_indices, model_type, run_evaluation=True):
                 scheduler_config=schedulers[i],
                 config_idx=i,
                 model_type=model_type,
-                run_evaluation=run_evaluation
+                run_evaluation=run_evaluation,
+                early_stopping_config=early_stopping_configs[i] if i < len(early_stopping_configs) else {}
             )
             results.append(result)
         except Exception as e:
