@@ -6,7 +6,7 @@ import random
 def set_deterministic_training(seed=42):
     """Ensure completely deterministic training including CUDA operations."""
     # Set CUDA deterministic environment variable
-    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':8192:8'
     
     # Python
     random.seed(seed)
