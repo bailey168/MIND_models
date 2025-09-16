@@ -122,7 +122,7 @@ class GraphConvNet(torch.nn.Module):
 #                 share_weights: bool = False)
 class GATv2ConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
-                model_dim, hidden_sf=4, out_sf=2, hidden_heads=4, bias=True, aggr='add',
+                model_dim, hidden_sf=4, out_sf=2, hidden_heads=4, bias=True, aggr='sum',
                 embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.5):
         super(GATv2ConvNet, self).__init__()
         self.layers_num = layers_num
@@ -143,7 +143,8 @@ class GATv2ConvNet(torch.nn.Module):
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
-                                    dropout=self.dropout_rate
+                                    dropout=self.dropout_rate,
+                                    aggr=aggr
                                     )] + \
                            [GATv2Conv(
                                     in_channels=64,
@@ -152,7 +153,8 @@ class GATv2ConvNet(torch.nn.Module):
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
-                                    dropout=self.dropout_rate
+                                    dropout=self.dropout_rate,
+                                    aggr=aggr
                                     ) for _ in range(layers_num - 2)] + \
                            [GATv2Conv(
                                     in_channels=64,
@@ -161,7 +163,8 @@ class GATv2ConvNet(torch.nn.Module):
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
-                                    dropout=self.dropout_rate
+                                    dropout=self.dropout_rate,
+                                    aggr=aggr
                                     )]
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
