@@ -108,6 +108,10 @@ def run_single_experiment(dataset_config, split_config, run_settings, epochs, sc
     # Run experiment with evaluation
     results = experiment.run(num_epochs=epochs, eval_training_set=True, run_evaluation=run_evaluation)
     
+    # Calculate best test MSE
+    best_test_mse = min(results['test_sgcn_mse']) if results['test_sgcn_mse'] else float('inf')
+    best_test_mse_epoch = results['test_sgcn_mse'].index(best_test_mse) + 1 if results['test_sgcn_mse'] else 0
+    
     # Create a summary file with detailed information including final epoch
     if hasattr(experiment, 'sgcn_specific_run_dir') and experiment.sgcn_specific_run_dir:
         # Save experiment configuration for evaluation script
@@ -135,20 +139,23 @@ def run_single_experiment(dataset_config, split_config, run_settings, epochs, sc
             f.write(f"Model Type: {model_type}\n")
             f.write(f"Learning Rate: {run_settings}\n")
             f.write(f"Planned Epochs: {epochs}\n")
-            f.write(f"Actual Final Epoch: {results.get('final_sgcn_epoch', epochs)}\n")
+            f.write(f"Actual Final Epoch (Saved Model): {results.get('final_sgcn_epoch', epochs)}\n")
             f.write(f"Early Stopped: {'Yes' if results.get('early_stopped', False) else 'No'}\n")
             f.write(f"Scheduler: {scheduler_config.get('scheduler', 'none')}\n")
             f.write(f"Final Test MSE: {results['test_sgcn_mse'][-1]:.5f}\n")
+            f.write(f"Best Test MSE: {best_test_mse:.5f} (epoch {best_test_mse_epoch})\n")
             
             if 'evaluation' in results and results['evaluation']:
                 eval_results = results['evaluation']
                 f.write(f"Test R² Score: {eval_results['test_results']['r2_score']:.4f}\n")
                 f.write(f"Test RMSE: {eval_results['test_results']['rmse']:.4f}\n")
+                f.write(f"Train R² Score: {eval_results['train_results']['r2_score']:.4f}\n")
     
     print(f"\nExperiment {config_idx + 1} completed!")
     print(f"Planned epochs: {epochs}, Actual final epoch: {results.get('final_sgcn_epoch', epochs)}")
     print(f"Early stopped: {'Yes' if results.get('early_stopped', False) else 'No'}")
     print(f"Final Test MSE: SGCN={results['test_sgcn_mse'][-1]:.5f}")
+    print(f"Best Test MSE: SGCN={best_test_mse:.5f} (epoch {best_test_mse_epoch})")
     
     # Print evaluation summary if available
     if 'evaluation' in results and results['evaluation']:
@@ -156,6 +163,7 @@ def run_single_experiment(dataset_config, split_config, run_settings, epochs, sc
         print(f"\nEvaluation Summary for {eval_results['model_type']} model:")
         print(f"Test R² Score: {eval_results['test_results']['r2_score']:.4f}")
         print(f"Test RMSE: {eval_results['test_results']['rmse']:.4f}")
+        print(f"Train R² Score: {eval_results['train_results']['r2_score']:.4f}")
         print(f"Plots saved to: {eval_results['model_path'].replace('model.pth', '')}")
     
     return results
@@ -209,13 +217,20 @@ def run_all_dsst_experiments(model_type, run_evaluation=True):
                 run_evaluation=run_evaluation,
                 early_stopping_config=early_stopping_configs[i]
             )
+            
+            # Calculate best test MSE for summary
+            best_test_mse = min(results['test_sgcn_mse']) if results['test_sgcn_mse'] else float('inf')
+            best_test_mse_epoch = results['test_sgcn_mse'].index(best_test_mse) + 1 if results['test_sgcn_mse'] else 0
+            
             all_results.append({
                 'config_idx': i,
                 'model_type': model_type,
                 'lr': learning_rates[i],
                 'epochs': epochs_list[i],
                 'scheduler': schedulers[i].get('scheduler', 'none'),
-                'results': results
+                'results': results,
+                'best_test_mse': best_test_mse,
+                'best_test_mse_epoch': best_test_mse_epoch
             })
             
         except Exception as e:
@@ -224,27 +239,30 @@ def run_all_dsst_experiments(model_type, run_evaluation=True):
             continue
     
     # Print summary of all experiments
-    print(f"\n{'='*100}")
+    print(f"\n{'='*120}")
     print(f"SUMMARY OF ALL {model_type} EXPERIMENTS")
-    print(f"{'='*100}")
-    print(f"{'Config':<8} {'Model':<10} {'LR':<10} {'Epochs':<8} {'Scheduler':<12} {'Final Test MSE':<15} {'Test R²':<10}")
-    print("-" * 100)
+    print(f"{'='*120}")
+    print(f"{'Config':<8} {'Model':<10} {'LR':<10} {'Epochs':<8} {'Scheduler':<12} {'Final Test MSE':<15} {'Best Test MSE':<15} {'Test R²':<10}")
+    print("-" * 120)
     
     for result in all_results:
         final_mse = result['results']['test_sgcn_mse'][-1] if result['results']['test_sgcn_mse'] else 'N/A'
+        best_mse = result['best_test_mse'] if result['best_test_mse'] != float('inf') else 'N/A'
         test_r2 = 'N/A'
         if 'evaluation' in result['results'] and result['results']['evaluation']:
             test_r2 = f"{result['results']['evaluation']['test_results']['r2_score']:.4f}"
-        print(f"{result['config_idx'] + 1:<8} {result['model_type']:<10} {result['lr']:<10} {result['epochs']:<8} {result['scheduler']:<12} {final_mse:<15.5f} {test_r2:<10}")
+        
+        print(f"{result['config_idx'] + 1:<8} {result['model_type']:<10} {result['lr']:<10} {result['epochs']:<8} {result['scheduler']:<12} {final_mse:<15.5f} {best_mse:<15.5f} {test_r2:<10}")
     
     # Find best performing model
     if all_results:
         valid_results = [r for r in all_results if r['results']['test_sgcn_mse']]
         if valid_results:
-            best_result = min(valid_results, key=lambda x: x['results']['test_sgcn_mse'][-1])
+            best_result = min(valid_results, key=lambda x: x['best_test_mse'])
             print(f"\nBest performing model:")
             print(f"Config {best_result['config_idx'] + 1}: Model={best_result['model_type']}, LR={best_result['lr']}, "
                   f"Epochs={best_result['epochs']}, Scheduler={best_result['scheduler']}")
+            print(f"Best Test MSE: {best_result['best_test_mse']:.5f} (epoch {best_result['best_test_mse_epoch']})")
             print(f"Final Test MSE: {best_result['results']['test_sgcn_mse'][-1]:.5f}")
             if 'evaluation' in best_result['results'] and best_result['results']['evaluation']:
                 eval_info = best_result['results']['evaluation']
