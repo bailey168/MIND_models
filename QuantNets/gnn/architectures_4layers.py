@@ -14,12 +14,13 @@ from torch_geometric.nn import GCNConv, ChebConv, GraphConv, SGConv, GENConv, Ge
 class GraphConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=4, out_sf=2, bias=True, aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=4):
+                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.1):
         super(GraphConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
         self.include_demo = include_demo
         self.demo_dim = demo_dim
+        self.dropout_rate = dropout_rate
 
         self.node_embedding = torch.nn.Embedding(
             num_embeddings=input_features,
@@ -78,11 +79,11 @@ class GraphConvNet(torch.nn.Module):
             torch.nn.Linear(total_features_dim, model_dim * 4),
             torch.nn.BatchNorm1d(model_dim * 4),
             torch.nn.LeakyReLU(),
-            torch.nn.Dropout(0.1),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(model_dim * 4, model_dim * 2),
             torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.LeakyReLU(),
-            torch.nn.Dropout(0.1),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(model_dim * 2, out_dim)
         )
 

@@ -15,12 +15,13 @@ from torch_geometric.nn import GCNConv, ChebConv, GraphConv, SGConv, GENConv, Ge
 class GraphConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=4, out_sf=2, bias=True, aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=4):
+                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.1):
         super(GraphConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
         self.include_demo = include_demo
         self.demo_dim = demo_dim
+        self.dropout_rate = dropout_rate
 
         self.node_embedding = torch.nn.Embedding(
             num_embeddings=input_features,
@@ -70,11 +71,11 @@ class GraphConvNet(torch.nn.Module):
             torch.nn.Linear(total_features_dim, model_dim * 2),
             torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.LeakyReLU(),
-            torch.nn.Dropout(0.1),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(model_dim * 2, model_dim),
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.LeakyReLU(),
-            torch.nn.Dropout(0.1),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -122,12 +123,13 @@ class GraphConvNet(torch.nn.Module):
 class GATv2ConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=4, out_sf=2, hidden_heads=4, bias=True, aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=4):
+                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.6):
         super(GATv2ConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
         self.include_demo = include_demo
         self.demo_dim = demo_dim
+        self.dropout_rate = dropout_rate
 
         self.node_embedding = torch.nn.Embedding(
             num_embeddings=input_features,
@@ -141,7 +143,7 @@ class GATv2ConvNet(torch.nn.Module):
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
-                                    dropout=0.1
+                                    dropout=self.dropout_rate
                                     )] + \
                            [GATv2Conv(
                                     in_channels=64,
@@ -150,7 +152,7 @@ class GATv2ConvNet(torch.nn.Module):
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
-                                    dropout=0.1
+                                    dropout=self.dropout_rate
                                     )] + \
                            [GATv2Conv(
                                     in_channels=64,
@@ -159,7 +161,7 @@ class GATv2ConvNet(torch.nn.Module):
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
-                                    dropout=0.1
+                                    dropout=self.dropout_rate
                                     )]
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
@@ -186,11 +188,11 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.Linear(total_features_dim, 64),
             torch.nn.BatchNorm1d(64),
             torch.nn.LeakyReLU(),
-            torch.nn.Dropout(0.1),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(64, 32),
             torch.nn.BatchNorm1d(32),
             torch.nn.LeakyReLU(),
-            torch.nn.Dropout(0.1),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(32, out_dim)
         )
 

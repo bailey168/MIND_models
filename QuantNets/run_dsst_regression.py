@@ -42,7 +42,8 @@ def create_model(model_type, dataset_config):
             out_sf=dataset_config['graph_out_sf'],
             embedding_dim=dataset_config['embedding_dim'],
             include_demo=dataset_config['include_demo'],
-            demo_dim=dataset_config['demo_dim']
+            demo_dim=dataset_config['demo_dim'],
+            dropout_rate=dataset_config['dropout_rate']
         )
     elif model_type == 'GATv2':
         return GATv2ConvNet(
@@ -56,7 +57,8 @@ def create_model(model_type, dataset_config):
             hidden_heads=dataset_config['gatv2_hidden_heads'],
             embedding_dim=dataset_config['embedding_dim'],
             include_demo=dataset_config['include_demo'],
-            demo_dim=dataset_config['demo_dim']
+            demo_dim=dataset_config['demo_dim'],
+            dropout_rate=dataset_config['dropout_rate']
         )
     else:
         raise ValueError(f"Unknown model type: {model_type}")
@@ -73,18 +75,26 @@ def run_single_experiment(dataset_config, split_config, run_settings, epochs, sc
     print(f"Scheduler: {scheduler_config.get('scheduler', 'none')}")
     print(f"Early Stopping: {'Enabled' if early_stopping_config and early_stopping_config.get('enabled', False) else 'Disabled'}")
     print(f"Run Evaluation: {run_evaluation}")
+    print(f"Dropout Rate: {dataset_config.get('dropout_rate', 'default')}")
+    print(f"Weight Decay: {dataset_config.get('weight_decay', 'default')}")
+    print(f"Layers: {dataset_config.get('layers_num', 'default')}")
     print(f"{'='*80}\n")
     
     # Create model
     model = create_model(model_type, dataset_config)
     
-    # Prepare optimizer parameters with scheduler
+    # Prepare optimizer parameters with scheduler and weight_decay
     optim_params = {"lr": run_settings}
+    if 'weight_decay' in dataset_config:
+        optim_params["weight_decay"] = dataset_config['weight_decay']
     optim_params.update(scheduler_config)
     
-    # Create unique experiment ID
+    # Create unique experiment ID with dropout, weight_decay, and layers_num
     early_stop_suffix = "_ES" if early_stopping_config and early_stopping_config.get('enabled', False) else ""
-    experiment_id = f"{TARGET}_regression_{model_type}_config_{config_idx + 1}_lr_{run_settings}_epochs_{epochs}_scheduler_{scheduler_config.get('scheduler', 'none')}{early_stop_suffix}"
+    dropout_str = f"_drop_{dataset_config.get('dropout_rate', 'def')}"
+    weight_decay_str = f"_wd_{dataset_config.get('weight_decay', 'def')}"
+    layers_str = f"_layers_{dataset_config.get('layers_num', 'def')}"
+    experiment_id = f"{TARGET}_regression_{model_type}_config_{config_idx + 1}_lr_{run_settings}_epochs_{epochs}_scheduler_{scheduler_config.get('scheduler', 'none')}{dropout_str}{weight_decay_str}{layers_str}{early_stop_suffix}"
     
     # Setup experiment
     experiment = ExperimentRegression(
@@ -143,6 +153,9 @@ def run_single_experiment(dataset_config, split_config, run_settings, epochs, sc
             f.write(f"Saved Model Epoch: {best_test_mse_epoch}\n")
             f.write(f"Early Stopped: {'Yes' if results.get('early_stopped', False) else 'No'}\n")
             f.write(f"Scheduler: {scheduler_config.get('scheduler', 'none')}\n")
+            f.write(f"Dropout Rate: {dataset_config.get('dropout_rate', 'default')}\n")
+            f.write(f"Weight Decay: {dataset_config.get('weight_decay', 'default')}\n")
+            f.write(f"Layers: {dataset_config.get('layers_num', 'default')}\n")
             f.write(f"Final Test MSE: {results['test_sgcn_mse'][-1]:.5f}\n")
             f.write(f"Best Test MSE: {best_test_mse:.5f} (epoch {best_test_mse_epoch})\n")
             

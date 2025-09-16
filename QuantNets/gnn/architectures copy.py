@@ -16,12 +16,13 @@ from torch_geometric.nn import GCNConv, ChebConv, GraphConv, SGConv, GENConv, Ge
 class GCNConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=5, out_sf=4, improved=True, cached=False, aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=5):
+                embedding_dim=16, include_demo=True, demo_dim=5, dropout_rate=0.3):
         super(GCNConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
         self.include_demo = include_demo
         self.demo_dim = demo_dim
+        self.dropout_rate = dropout_rate
 
         # Add embedding layer to convert node indices to dense features
         self.node_embedding = torch.nn.Embedding(
@@ -63,11 +64,11 @@ class GCNConvNet(torch.nn.Module):
             torch.nn.Linear(total_features_dim, model_dim * 2),
             torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.3),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(model_dim * 2, model_dim),
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
+            torch.nn.Dropout(self.dropout_rate * 0.67),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -104,12 +105,13 @@ class GCNConvNet(torch.nn.Module):
 class ChebConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=3, out_sf=2, K=3, normalization='sym', aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=5): # norm: sym / rw / None
+                embedding_dim=16, include_demo=True, demo_dim=5, dropout_rate=0.3): # norm: sym / rw / None
         super(ChebConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
         self.include_demo = include_demo
         self.demo_dim = demo_dim
+        self.dropout_rate = dropout_rate
 
         self.node_embedding = torch.nn.Embedding(
             num_embeddings=input_features,
@@ -150,11 +152,11 @@ class ChebConvNet(torch.nn.Module):
             torch.nn.Linear(total_features_dim, model_dim * 2),
             torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.3),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(model_dim * 2, model_dim),
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
+            torch.nn.Dropout(self.dropout_rate * 0.67),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -191,12 +193,13 @@ class ChebConvNet(torch.nn.Module):
 class GraphConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=4, out_sf=2, bias=True, aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=5):
+                embedding_dim=16, include_demo=True, demo_dim=5, dropout_rate=0.3):
         super(GraphConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
         self.include_demo = include_demo
         self.demo_dim = demo_dim
+        self.dropout_rate = dropout_rate
 
         self.node_embedding = torch.nn.Embedding(
             num_embeddings=input_features,
@@ -239,11 +242,11 @@ class GraphConvNet(torch.nn.Module):
             torch.nn.Linear(total_features_dim, model_dim * 2),
             torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.3),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(model_dim * 2, model_dim),
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.3),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -287,12 +290,13 @@ class GraphConvNet(torch.nn.Module):
 class SGConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=5, out_sf=4, K=5, bias=True, aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=5):
+                embedding_dim=16, include_demo=True, demo_dim=5, dropout_rate=0.3):
         super(SGConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
         self.include_demo = include_demo
         self.demo_dim = demo_dim
+        self.dropout_rate = dropout_rate
 
         self.node_embedding = torch.nn.Embedding(
             num_embeddings=input_features,
@@ -333,11 +337,11 @@ class SGConvNet(torch.nn.Module):
             torch.nn.Linear(total_features_dim, model_dim * 2),
             torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.3),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(model_dim * 2, model_dim),
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
+            torch.nn.Dropout(self.dropout_rate * 0.67),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -383,7 +387,7 @@ class SGConvNet(torch.nn.Module):
 class GENConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=3, out_sf=2, use_bias=True, aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=5):
+                embedding_dim=16, include_demo=True, demo_dim=5, dropout_rate=0.3):
         super(GENConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
@@ -430,11 +434,11 @@ class GENConvNet(torch.nn.Module):
             torch.nn.Linear(total_features_dim, model_dim * 2),
             torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.3),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(model_dim * 2, model_dim),
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
+            torch.nn.Dropout(self.dropout_rate * 0.67),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -476,7 +480,7 @@ class GENConvNet(torch.nn.Module):
 class GeneralConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=3, out_sf=1, hidden_heads=4, use_bias=True, aggr="add",
-                embedding_dim=16, include_demo=True, demo_dim=5):
+                embedding_dim=16, include_demo=True, demo_dim=5, dropout_rate=0.3):
         super(GeneralConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
@@ -523,11 +527,11 @@ class GeneralConvNet(torch.nn.Module):
             torch.nn.Linear(total_features_dim, model_dim * 2),
             torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.3),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(model_dim * 2, model_dim),
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
+            torch.nn.Dropout(self.dropout_rate * 0.67),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -569,7 +573,7 @@ class GeneralConvNet(torch.nn.Module):
 class GATv2ConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=1, out_sf=1, hidden_heads=3, use_bias=True, aggr="add",
-                embedding_dim=16, include_demo=True, demo_dim=5):
+                embedding_dim=16, include_demo=True, demo_dim=5, dropout_rate=0.3):
         super(GATv2ConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
@@ -616,11 +620,11 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.Linear(total_features_dim, model_dim * 2),
             torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.3),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(model_dim * 2, model_dim),
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
+            torch.nn.Dropout(self.dropout_rate * 0.67),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 
@@ -663,7 +667,7 @@ class GATv2ConvNet(torch.nn.Module):
 class TransformerConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=1, out_sf=1, hidden_heads=3, use_bias=True, aggr="add",
-                embedding_dim=16, include_demo=True, demo_dim=5):
+                embedding_dim=16, include_demo=True, demo_dim=5, dropout_rate=0.3):
         super(TransformerConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
@@ -710,11 +714,11 @@ class TransformerConvNet(torch.nn.Module):
             torch.nn.Linear(total_features_dim, model_dim * 2),
             torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.3),
+            torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(model_dim * 2, model_dim),
             torch.nn.BatchNorm1d(model_dim),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.2),  # Slightly lower dropout for final layer
+            torch.nn.Dropout(self.dropout_rate * 0.67),  # Slightly lower dropout for final layer
             torch.nn.Linear(model_dim, out_dim)
         )
 

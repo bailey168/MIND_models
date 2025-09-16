@@ -177,19 +177,24 @@ class ExperimentRegression:
         # Define the optimizers for the different models
         self.optim_params = optim_params
         learning_rate = 0.001  # Default learning rate for brain connectivity regression
-        if optim_params != None and "lr" in optim_params.keys():
-            learning_rate = optim_params["lr"] 
+        weight_decay = 0.001   # Default weight decay
+        
+        if optim_params != None:
+            if "lr" in optim_params.keys():
+                learning_rate = optim_params["lr"]
+            if "weight_decay" in optim_params.keys():
+                weight_decay = optim_params["weight_decay"]
         
         self.cnn_model_optimizer = None
         self.qgcn_model_optimizer = None
         self.sgcn_model_optimizer = None
         
         if self.cnn_model_exists:
-            self.cnn_model_optimizer = torch.optim.AdamW(self.cnn_model.parameters(), lr=learning_rate, weight_decay=0.001)
+            self.cnn_model_optimizer = torch.optim.AdamW(self.cnn_model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         if self.qgcn_model_exists:
-            self.qgcn_model_optimizer = torch.optim.AdamW(self.qgcn_model.parameters(), lr=learning_rate, weight_decay=0.001)
+            self.qgcn_model_optimizer = torch.optim.AdamW(self.qgcn_model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         if self.sgcn_model_exists:
-            self.sgcn_model_optimizer = torch.optim.AdamW(self.sgcn_model.parameters(), lr=learning_rate, weight_decay=0.001)
+            self.sgcn_model_optimizer = torch.optim.AdamW(self.sgcn_model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
         # Add learning rate schedulers
         self.cnn_model_scheduler = None
