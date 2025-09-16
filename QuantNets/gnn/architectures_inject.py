@@ -152,8 +152,7 @@ class GATv2ConvNet(torch.nn.Module):
                 bias=bias,
                 edge_dim=1,
                 residual=True,
-                dropout=self.dropout_rate,
-                aggr=aggr
+                dropout=self.dropout_rate
             ) for _ in range(layers_num)
         ])
 

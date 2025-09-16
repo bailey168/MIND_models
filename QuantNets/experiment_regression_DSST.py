@@ -17,6 +17,7 @@ from util.schedulers import get_cosine_schedule_with_warmup
 
 from util.data_processing import *
 from util.early_stopping import EarlyStopping
+from util.reproducibility import set_deterministic_training
 
 # define a wrapper time_it decorator function
 def time_it(func):
@@ -97,30 +98,40 @@ class ExperimentRegression:
         raw_train_loader = RawDataLoader([], batch_size=train_batch_size, shuffle=False)
         raw_test_loader = RawDataLoader([], batch_size=test_batch_size, shuffle=False)
 
+        self.generator = set_deterministic_training(42)
+
         # Create graph data loaders for brain connectivity
         shuffle_qgcn_geo_train_data = (len(geometric_qgcn_train_data) != 0) and train_shuffle_data
         geometric_qgcn_train_loader = GraphDataLoader(
             geometric_qgcn_train_data, 
             batch_size=train_batch_size, 
-            shuffle=shuffle_qgcn_geo_train_data
+            shuffle=shuffle_qgcn_geo_train_data,
+            num_workers=0,
+            generator=self.generator
         )
         shuffle_qgcn_geo_test_data = (len(geometric_qgcn_test_data) != 0) and test_shuffle_data
         geometric_qgcn_test_loader = GraphDataLoader(
             geometric_qgcn_test_data,
             batch_size=test_batch_size,
-            shuffle=shuffle_qgcn_geo_test_data
+            shuffle=shuffle_qgcn_geo_test_data,
+            num_workers=0,
+            generator=self.generator
         )
         shuffle_sgcn_geo_train_data = (len(geometric_sgcn_train_data) != 0) and train_shuffle_data
         geometric_sgcn_train_loader = GraphDataLoader(
             geometric_sgcn_train_data, 
             batch_size=train_batch_size, 
-            shuffle=shuffle_sgcn_geo_train_data
+            shuffle=shuffle_sgcn_geo_train_data,
+            num_workers=0,
+            generator=self.generator
         )
         shuffle_sgcn_geo_test_data = (len(geometric_sgcn_test_data) != 0) and test_shuffle_data
         geometric_sgcn_test_loader = GraphDataLoader(
             geometric_sgcn_test_data,
             batch_size=test_batch_size,
-            shuffle=shuffle_sgcn_geo_test_data
+            shuffle=shuffle_sgcn_geo_test_data,
+            num_workers=0,
+            generator=self.generator
         )
 
         # Save the references here

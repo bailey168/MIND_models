@@ -6,15 +6,11 @@ import random
 import numpy as np
 import torch
 from pathlib import Path
+from util.reproducibility import set_deterministic_training
 
 # Set seed for reproducibility
 SEED = 42
-random.seed(SEED)
-np.random.seed(SEED)
-torch.manual_seed(SEED)
-torch.cuda.manual_seed_all(SEED)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+generator = set_deterministic_training(SEED)
 
 # Add the current directory to sys.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
