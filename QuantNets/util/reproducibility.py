@@ -1,10 +1,13 @@
+import os
 import torch
 import numpy as np
 import random
-import os
 
 def set_deterministic_training(seed=42):
-    """Ensure completely deterministic training."""
+    """Ensure completely deterministic training including CUDA operations."""
+    # Set CUDA deterministic environment variable
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    
     # Python
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
