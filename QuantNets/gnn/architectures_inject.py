@@ -152,7 +152,8 @@ class GATv2ConvNet(torch.nn.Module):
                 bias=bias,
                 edge_dim=1,
                 residual=True,
-                dropout=self.dropout_rate
+                dropout=self.dropout_rate,
+                aggr=aggr
             ) for _ in range(layers_num)
         ])
 
@@ -181,7 +182,7 @@ class GATv2ConvNet(torch.nn.Module):
 
         # self.activations = torch.nn.ModuleList([
         #     torch.nn.LeakyReLU() for _ in range(layers_num - 1)
-        # ])
+        #])
 
         self.classifier = torch.nn.Linear(hidden_dim, out_dim)
 
