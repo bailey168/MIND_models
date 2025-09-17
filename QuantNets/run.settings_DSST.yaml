@@ -7,9 +7,10 @@ grid_search:
   gf_custom:
     # dropout_rates: [0.1, 0.3, 0.5, 0.7]
     # weight_decays: [0.0001, 0.001, 0.01, 0.1]
+    # layers_nums: [2, 3, 4]
     dropout_rates: [0.5]
     weight_decays: [0.1]
-
+    layers_nums: [2, 3, 4]
 # Learning rates - regression typically needs different rates than classification
 lrs:
   dsst_custom:
@@ -43,10 +44,10 @@ early_stopping:
   gf_custom:
     - enabled: true
       patience: 20
-      min_delta: 0.001
+      min_delta: 0.0001
       restore_best_weights: true
       verbose: true
-      monitor: "r2"  # Monitor R² instead of loss
+      monitor: "loss"  # Monitor R² instead of loss
 
 # Learning rate scheduler configurations
 schedulers:

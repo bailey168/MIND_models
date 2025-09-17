@@ -64,9 +64,10 @@ def generate_grid_search_configs(run_config, splits_config, datasets_config):
     """Generate all combinations of grid search parameters."""
     # Get grid search parameters
     grid_params = run_config.get('grid_search', {}).get('gf_custom', {})
-    dropout_rates = grid_params.get('dropout_rates', [0.5])
-    weight_decays = grid_params.get('weight_decays', [0.01])
-    
+    dropout_rates = grid_params['dropout_rates']
+    weight_decays = grid_params['weight_decays']
+    layers_nums = grid_params['layers_nums']
+
     # Get base configurations
     base_lr = run_config['lrs']['gf_custom'][0]
     base_epochs = run_config['epochs']['gf_custom'][0]
@@ -78,12 +79,13 @@ def generate_grid_search_configs(run_config, splits_config, datasets_config):
     configs = []
     config_idx = 0
     
-    # Generate all combinations
-    for dropout_rate, weight_decay in product(dropout_rates, weight_decays):
+    # Generate all combinations - now including layers_num
+    for dropout_rate, weight_decay, layers_num in product(dropout_rates, weight_decays, layers_nums):
         # Create modified dataset config
         dataset_config = base_dataset.copy()
         dataset_config['dropout_rate'] = dropout_rate
         dataset_config['weight_decay'] = weight_decay
+        dataset_config['layers_num'] = layers_num  # Add layers_num to dataset config
         
         # Create experiment configuration
         config = {
@@ -95,7 +97,8 @@ def generate_grid_search_configs(run_config, splits_config, datasets_config):
             'scheduler_config': base_scheduler,
             'early_stopping_config': base_early_stopping,
             'dropout_rate': dropout_rate,
-            'weight_decay': weight_decay
+            'weight_decay': weight_decay,
+            'layers_num': layers_num  # Add layers_num to config
         }
         
         configs.append(config)
@@ -115,6 +118,7 @@ def run_single_experiment(config, model_type, run_evaluation=True):
     early_stopping_config = config['early_stopping_config']
     dropout_rate = config['dropout_rate']
     weight_decay = config['weight_decay']
+    layers_num = config['layers_num']  # Extract layers_num
     
     print(f"\n{'='*80}")
     print(f"Starting Grid Search Experiment {config_idx + 1}")
@@ -123,6 +127,7 @@ def run_single_experiment(config, model_type, run_evaluation=True):
     print(f"Epochs: {epochs}")
     print(f"Dropout Rate: {dropout_rate}")
     print(f"Weight Decay: {weight_decay}")
+    print(f"Layers Number: {layers_num}")  # Add layers_num to output
     print(f"Train/Test Split: {split_config['train']}/{split_config['test']}")
     print(f"Scheduler: {scheduler_config.get('scheduler', 'none')}")
     print(f"Early Stopping: {'Enabled' if early_stopping_config and early_stopping_config.get('enabled', False) else 'Disabled'}")
@@ -136,9 +141,9 @@ def run_single_experiment(config, model_type, run_evaluation=True):
     optim_params = {"lr": run_settings, "weight_decay": weight_decay}
     optim_params.update(scheduler_config)
     
-    # Create unique experiment ID
+    # Create unique experiment ID - now including layers_num
     early_stop_suffix = "_ES" if early_stopping_config and early_stopping_config.get('enabled', False) else ""
-    experiment_id = f"{TARGET}_regression_{model_type}_grid_{config_idx + 1}_lr_{run_settings}_epochs_{epochs}_drop_{dropout_rate}_wd_{weight_decay}_scheduler_{scheduler_config.get('scheduler', 'none')}{early_stop_suffix}"
+    experiment_id = f"{TARGET}_regression_{model_type}_grid_{config_idx + 1}_lr_{run_settings}_epochs_{epochs}_drop_{dropout_rate}_wd_{weight_decay}_layers_{layers_num}_scheduler_{scheduler_config.get('scheduler', 'none')}{early_stop_suffix}"
     
     # Setup experiment
     experiment = ExperimentRegression(
@@ -181,7 +186,8 @@ def run_single_experiment(config, model_type, run_evaluation=True):
             'scheduler_config': scheduler_config,
             'early_stopping_config': early_stopping_config,
             'dropout_rate': dropout_rate,
-            'weight_decay': weight_decay
+            'weight_decay': weight_decay,
+            'layers_num': layers_num  # Add layers_num to saved config
         }
         config_path = os.path.join(experiment.sgcn_specific_run_dir, "experiment_config.yaml")
         with open(config_path, 'w') as f:
@@ -196,6 +202,7 @@ def run_single_experiment(config, model_type, run_evaluation=True):
             f.write(f"Learning Rate: {run_settings}\n")
             f.write(f"Dropout Rate: {dropout_rate}\n")
             f.write(f"Weight Decay: {weight_decay}\n")
+            f.write(f"Number of Layers: {layers_num}\n")  # Add layers_num to summary
             f.write(f"Planned Epochs: {epochs}\n")
             f.write(f"Final Training Epoch: {results.get('final_sgcn_epoch', epochs)}\n")
             f.write(f"Saved Model Epoch: {best_test_mse_epoch}\n")
@@ -211,7 +218,7 @@ def run_single_experiment(config, model_type, run_evaluation=True):
                 f.write(f"Train R² Score: {eval_results['train_results']['r2_score']:.4f}\n")
     
     print(f"\nGrid Search Experiment {config_idx + 1} completed!")
-    print(f"Dropout: {dropout_rate}, Weight Decay: {weight_decay}")
+    print(f"Dropout: {dropout_rate}, Weight Decay: {weight_decay}, Layers: {layers_num}")  # Add layers_num to output
     print(f"Planned epochs: {epochs}, Final training epoch: {results.get('final_sgcn_epoch', epochs)}")
     print(f"Saved model from epoch: {best_test_mse_epoch}")
     print(f"Early stopped: {'Yes' if results.get('early_stopped', False) else 'No'}")
@@ -231,6 +238,7 @@ def run_single_experiment(config, model_type, run_evaluation=True):
     results['grid_search_params'] = {
         'dropout_rate': dropout_rate,
         'weight_decay': weight_decay,
+        'layers_num': layers_num,  # Add layers_num to results
         'config_idx': config_idx
     }
     
@@ -253,13 +261,15 @@ def run_grid_search(model_type, run_evaluation=True):
     
     # Print grid search overview
     grid_params = run_config.get('grid_search', {}).get('gf_custom', {})
-    dropout_rates = grid_params.get('dropout_rates', [0.5])
-    weight_decays = grid_params.get('weight_decays', [0.01])
-    
+    dropout_rates = grid_params['dropout_rates']
+    weight_decays = grid_params['weight_decays']
+    layers_nums = grid_params['layers_nums']
+
     print(f"\nGrid Search Parameters:")
     print(f"Dropout Rates: {dropout_rates}")
     print(f"Weight Decays: {weight_decays}")
-    print(f"Total Combinations: {len(dropout_rates)} × {len(weight_decays)} = {len(configs)}")
+    print(f"Layers Numbers: {layers_nums}")  # Add layers_nums to output
+    print(f"Total Combinations: {len(dropout_rates)} × {len(weight_decays)} × {len(layers_nums)} = {len(configs)}")
     
     all_results = []
     
@@ -277,6 +287,7 @@ def run_grid_search(model_type, run_evaluation=True):
                 'model_type': model_type,
                 'dropout_rate': config['dropout_rate'],
                 'weight_decay': config['weight_decay'],
+                'layers_num': config['layers_num'],  # Add layers_num to results
                 'lr': config['lr'],
                 'epochs': config['epochs'],
                 'scheduler': config['scheduler_config'].get('scheduler', 'none'),
@@ -290,12 +301,12 @@ def run_grid_search(model_type, run_evaluation=True):
             print("Continuing with next experiment...")
             continue
     
-    # Print summary of all experiments
-    print(f"\n{'='*140}")
+    # Print summary of all experiments - update table header
+    print(f"\n{'='*160}")
     print(f"GRID SEARCH SUMMARY - {model_type} MODEL")
-    print(f"{'='*140}")
-    print(f"{'Config':<8} {'Dropout':<10} {'WeightDec':<12} {'LR':<10} {'Epochs':<8} {'Scheduler':<12} {'Final MSE':<12} {'Best MSE':<12} {'Test R²':<10}")
-    print("-" * 140)
+    print(f"{'='*160}")
+    print(f"{'Config':<8} {'Dropout':<10} {'WeightDec':<12} {'Layers':<8} {'LR':<10} {'Epochs':<8} {'Scheduler':<12} {'Final MSE':<12} {'Best MSE':<12} {'Test R²':<10}")
+    print("-" * 160)
     
     for result in all_results:
         final_mse = result['results']['test_sgcn_mse'][-1] if result['results']['test_sgcn_mse'] else 'N/A'
@@ -304,15 +315,15 @@ def run_grid_search(model_type, run_evaluation=True):
         if 'evaluation' in result['results'] and result['results']['evaluation']:
             test_r2 = f"{result['results']['evaluation']['test_results']['r2_score']:.4f}"
         
-        print(f"{result['config_idx'] + 1:<8} {result['dropout_rate']:<10} {result['weight_decay']:<12} {result['lr']:<10} {result['epochs']:<8} {result['scheduler']:<12} {final_mse:<12.5f} {best_mse:<12.5f} {test_r2:<10}")
+        print(f"{result['config_idx'] + 1:<8} {result['dropout_rate']:<10} {result['weight_decay']:<12} {result['layers_num']:<8} {result['lr']:<10} {result['epochs']:<8} {result['scheduler']:<12} {final_mse:<12.5f} {best_mse:<12.5f} {test_r2:<10}")
     
-    # Find best performing model
+    # Find best performing model - update to include layers_num
     if all_results:
         valid_results = [r for r in all_results if r['results']['test_sgcn_mse']]
         if valid_results:
             best_result = min(valid_results, key=lambda x: x['best_test_mse'])
             print(f"\nBest performing model:")
-            print(f"Config {best_result['config_idx'] + 1}: Dropout={best_result['dropout_rate']}, WeightDecay={best_result['weight_decay']}")
+            print(f"Config {best_result['config_idx'] + 1}: Dropout={best_result['dropout_rate']}, WeightDecay={best_result['weight_decay']}, Layers={best_result['layers_num']}")
             print(f"Model={best_result['model_type']}, LR={best_result['lr']}, Epochs={best_result['epochs']}, Scheduler={best_result['scheduler']}")
             print(f"Best Test MSE: {best_result['best_test_mse']:.5f} (epoch {best_result['best_test_mse_epoch']})")
             print(f"Final Test MSE: {best_result['results']['test_sgcn_mse'][-1]:.5f}")
@@ -375,11 +386,11 @@ if __name__ == "__main__":
         configs = generate_grid_search_configs(run_config, splits_config, datasets_config)
         
         print("Available Grid Search configurations:")
-        print(f"{'Index':<8} {'Dropout':<10} {'WeightDec':<12} {'LR':<10} {'Epochs':<8} {'Train':<8} {'Test':<8} {'Scheduler':<12}")
-        print("-" * 85)
+        print(f"{'Index':<8} {'Dropout':<10} {'WeightDec':<12} {'Layers':<8} {'LR':<10} {'Epochs':<8} {'Train':<8} {'Test':<8} {'Scheduler':<12}")
+        print("-" * 105)
         
         for config in configs:
-            print(f"{config['config_idx']:<8} {config['dropout_rate']:<10} {config['weight_decay']:<12} {config['lr']:<10} {config['epochs']:<8} {config['split_config']['train']:<8} {config['split_config']['test']:<8} {config['scheduler_config'].get('scheduler', 'none'):<12}")
+            print(f"{config['config_idx']:<8} {config['dropout_rate']:<10} {config['weight_decay']:<12} {config['layers_num']:<8} {config['lr']:<10} {config['epochs']:<8} {config['split_config']['train']:<8} {config['split_config']['test']:<8} {config['scheduler_config'].get('scheduler', 'none'):<12}")
     
     elif args.config:
         # Run specific configurations

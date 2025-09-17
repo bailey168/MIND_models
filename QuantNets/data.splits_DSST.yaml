@@ -12,4 +12,4 @@ dsst_custom:
 gf_custom:
   train: 27181
   test: 6796 
-  batch_size: 128
+  batch_size: 64
