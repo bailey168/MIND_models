@@ -25,10 +25,6 @@ gf_custom:
   include_demo: True
   demo_dim: 4  # age(1) + sex(1) + assessment_centre_onehot_drop_first(2) = 4
 
-  # Training hyperparameters
-  dropout_rate: 0.5
-  weight_decay: 0.01
-
   # Model specific params - optimized for regression
   # ChebConv & GraphConv
   cheb_K: 3

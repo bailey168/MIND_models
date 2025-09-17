@@ -160,10 +160,9 @@ class GATv2ConvNet(torch.nn.Module):
             pyg_nn.norm.GraphNorm(hidden_dim) for _ in range(layers_num - 1)
         ])
 
-        # self.activations = torch.nn.ModuleList([
-        #     torch.nn.LeakyReLU(),
-        #     torch.nn.LeakyReLU()
-        # ])
+        self.activations = torch.nn.ModuleList([
+            torch.nn.ELU() for _ in range(layers_num - 1)
+        ])
 
         # Calculate final feature dimension
         graph_features_dim = hidden_dim
@@ -202,6 +201,7 @@ class GATv2ConvNet(torch.nn.Module):
 
             if i < self.layers_num - 1:
                 data.x = self.batch_norms[i](data.x)
+                data.x = self.activations[i](data.x)
 
         graph_features = global_mean_pool(data.x, data.batch)
 

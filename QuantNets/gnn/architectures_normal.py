@@ -123,7 +123,7 @@ class GraphConvNet(torch.nn.Module):
 class GATv2ConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=4, out_sf=2, hidden_heads=4, bias=True, aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.6):
+                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.5):
         super(GATv2ConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
@@ -167,13 +167,11 @@ class GATv2ConvNet(torch.nn.Module):
 
         # Add batch normalization and activation layers
         self.batch_norms = torch.nn.ModuleList([
-            pyg_nn.norm.GraphNorm(64),
-            pyg_nn.norm.GraphNorm(64)
+            pyg_nn.norm.GraphNorm(64) for _ in range(layers_num - 1)
         ])
-        # self.activations = torch.nn.ModuleList([
-        #     torch.nn.LeakyReLU(),
-        #     torch.nn.LeakyReLU()
-        # ])
+        self.activations = torch.nn.ModuleList([
+            torch.nn.ELU() for _ in range(layers_num - 1)
+        ])
 
         # Calculate final feature dimension
         graph_features_dim = 64
@@ -205,7 +203,7 @@ class GATv2ConvNet(torch.nn.Module):
 
             if i < self.layers_num - 1:
                 data.x = self.batch_norms[i](data.x)
-            #     data.x = self.activations[i](data.x)
+                data.x = self.activations[i](data.x)
 
         graph_features = global_mean_pool(data.x, data.batch)
 

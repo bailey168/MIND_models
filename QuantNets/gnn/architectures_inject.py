@@ -179,9 +179,9 @@ class GATv2ConvNet(torch.nn.Module):
             pyg_nn.norm.GraphNorm(hidden_dim) for _ in range(layers_num - 1)
         ])
 
-        # self.activations = torch.nn.ModuleList([
-        #     torch.nn.LeakyReLU() for _ in range(layers_num - 1)
-        #])
+        self.activations = torch.nn.ModuleList([
+            torch.nn.ELU() for _ in range(layers_num - 1)
+        ])
 
         self.classifier = torch.nn.Linear(hidden_dim, out_dim)
 
@@ -211,6 +211,7 @@ class GATv2ConvNet(torch.nn.Module):
             # Apply normalization (except for last layer)
             if i < self.layers_num - 1:
                 data.x = self.batch_norms[i](data.x)
+                data.x = self.activations[i](data.x)
 
         # Global pooling and regression
         graph_features = global_mean_pool(data.x, data.batch)
