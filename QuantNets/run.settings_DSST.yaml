@@ -16,7 +16,7 @@ lrs:
   dsst_custom:
     - 0.001
   gf_custom:
-    - 0.01
+    - 0.001
 
 # Epochs - regression may need more epochs to converge
 epochs:
@@ -43,7 +43,7 @@ early_stopping:
       monitor: "r2"
   gf_custom:
     - enabled: true
-      patience: 20
+      patience: 30
       min_delta: 0.0001
       restore_best_weights: true
       verbose: true

@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import torch_geometric.transforms as T
 from torch_geometric.nn import global_mean_pool
-from torch_geometric.nn import GCNConv, ChebConv, GraphConv, SGConv, GENConv, GeneralConv, GATv2Conv, TransformerConv
+from torch_geometric.nn import GraphConv, GATv2Conv
 
 # GraphConv. 2018 https://arxiv.org/abs/1810.02244
 # class GCNConv(
