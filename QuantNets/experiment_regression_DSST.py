@@ -13,6 +13,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader as RawDataLoader
 from torch_geometric.loader import DataLoader as GraphDataLoader
+from sklearn.metrics import r2_score
 from util.schedulers import get_cosine_schedule_with_warmup
 
 from util.data_processing import *
@@ -50,7 +51,7 @@ class ExperimentRegression:
                 profile_run = False,
                 walk_clock_num_runs = 10,
                 id = None,
-                early_stopping_config = None):  # Add early stopping config
+                early_stopping_config = None):
         
         # Controls whether we want to print runtime per model
         self.profile_run = profile_run
@@ -223,7 +224,7 @@ class ExperimentRegression:
         if self.sgcn_model_exists:
             self.sgcn_model_scheduler = self._create_scheduler(self.sgcn_model_optimizer, scheduler_type, scheduler_params)
 
-        # Add early stopping configuration
+        # Add early stopping configuration with R² support
         self.early_stopping_config = early_stopping_config or {}
         self.use_early_stopping = self.early_stopping_config.get('enabled', False)
         
@@ -233,19 +234,22 @@ class ExperimentRegression:
             es_min_delta = self.early_stopping_config.get('min_delta', 0.0001)
             es_restore_weights = self.early_stopping_config.get('restore_best_weights', True)
             es_verbose = self.early_stopping_config.get('verbose', True)
+            es_monitor = self.early_stopping_config.get('monitor', 'loss')  # 'loss' or 'r2'
             
             self.qgcn_early_stopping = EarlyStopping(
                 patience=es_patience,
                 min_delta=es_min_delta,
                 restore_best_weights=es_restore_weights,
-                verbose=es_verbose
+                verbose=es_verbose,
+                monitor=es_monitor
             ) if self.qgcn_model_exists else None
             
             self.sgcn_early_stopping = EarlyStopping(
                 patience=es_patience,
                 min_delta=es_min_delta,
                 restore_best_weights=es_restore_weights,
-                verbose=es_verbose
+                verbose=es_verbose,
+                monitor=es_monitor
             ) if self.sgcn_model_exists else None
         else:
             self.qgcn_early_stopping = None
@@ -472,6 +476,8 @@ class ExperimentRegression:
     def __cache_results(self, train_qgcn_loss_array, train_sgcn_loss_array, 
                         train_qgcn_mse_array, train_sgcn_mse_array,
                         test_qgcn_mse_array, test_sgcn_mse_array,
+                        train_qgcn_r2_array=None, train_sgcn_r2_array=None,
+                        test_qgcn_r2_array=None, test_sgcn_r2_array=None,
                         learning_rates_qgcn=None, learning_rates_sgcn=None):
         """Save training results to disk."""
         if self.qgcn_specific_run_dir != None and self.qgcn_model_exists:
@@ -484,6 +490,17 @@ class ExperimentRegression:
                 pickle.dump(train_qgcn_mse_array, f)
             with open(test_qgcn_mse_filepath, 'wb') as f:
                 pickle.dump(test_qgcn_mse_array, f)
+            
+            # Save R² arrays if provided
+            if train_qgcn_r2_array is not None:
+                train_qgcn_r2_filepath = os.path.join(self.qgcn_specific_run_dir, "train_r2.pk")
+                with open(train_qgcn_r2_filepath, 'wb') as f:
+                    pickle.dump(train_qgcn_r2_array, f)
+            if test_qgcn_r2_array is not None:
+                test_qgcn_r2_filepath = os.path.join(self.qgcn_specific_run_dir, "test_r2.pk")
+                with open(test_qgcn_r2_filepath, 'wb') as f:
+                    pickle.dump(test_qgcn_r2_array, f)
+            
             if learning_rates_qgcn is not None:
                 lr_qgcn_filepath = os.path.join(self.qgcn_specific_run_dir, "learning_rates.pk")
                 with open(lr_qgcn_filepath, 'wb') as f:
@@ -499,6 +516,17 @@ class ExperimentRegression:
                 pickle.dump(train_sgcn_mse_array, f)
             with open(test_sgcn_mse_filepath, 'wb') as f:
                 pickle.dump(test_sgcn_mse_array, f)
+            
+            # Save R² arrays if provided
+            if train_sgcn_r2_array is not None:
+                train_sgcn_r2_filepath = os.path.join(self.sgcn_specific_run_dir, "train_r2.pk")
+                with open(train_sgcn_r2_filepath, 'wb') as f:
+                    pickle.dump(train_sgcn_r2_array, f)
+            if test_sgcn_r2_array is not None:
+                test_sgcn_r2_filepath = os.path.join(self.sgcn_specific_run_dir, "test_r2.pk")
+                with open(test_sgcn_r2_filepath, 'wb') as f:
+                    pickle.dump(test_sgcn_r2_array, f)
+            
             if learning_rates_sgcn is not None:
                 lr_sgcn_filepath = os.path.join(self.sgcn_specific_run_dir, "learning_rates.pk")
                 with open(lr_sgcn_filepath, 'wb') as f:
@@ -577,14 +605,15 @@ class ExperimentRegression:
         return qgcn_loss_all, sgcn_loss_all
 
     def __evaluate(self, eval_train_data=False):
-        """Evaluate models on train or test data."""
+        """Evaluate models on train or test data and return both MSE and R²."""
         # For QGCN evaluation
-        qgcn_mse = 0
+        qgcn_mse, qgcn_r2 = 0, 0
         if self.qgcn_model_exists:
             sp_qgcn_dataset_loader = self.sp_qgcn_train_dataloader if eval_train_data else self.sp_qgcn_test_dataloader
             self.qgcn_model.eval()
             if self.profile_run: start_time = time.time()
             total_mse, total_samples = 0, 0
+            all_predictions, all_targets = [], []
             with torch.no_grad():
                 for data in sp_qgcn_dataset_loader:
                     qgcn_data = self.__move_graph_data_to_device(data)
@@ -592,19 +621,31 @@ class ExperimentRegression:
                     mse = F.mse_loss(pred, qgcn_data.y.float(), reduction='sum')
                     total_mse += mse.item()
                     total_samples += qgcn_data.num_graphs
+                    
+                    # Collect predictions and targets for R² calculation
+                    all_predictions.extend(pred.cpu().numpy().flatten())
+                    all_targets.extend(qgcn_data.y.float().cpu().numpy().flatten())
+            
             qgcn_mse = total_mse / total_samples
+            # Calculate R² score
+            if len(all_predictions) > 1:  # Need at least 2 samples for R²
+                qgcn_r2 = r2_score(all_targets, all_predictions)
+            else:
+                qgcn_r2 = 0.0
+            
             if self.profile_run: 
                 stop_time = time.time()
                 profile_stats = f"; Epoch took a total of {stop_time - start_time}s"
                 print(f"{'train' if eval_train_data else 'test'} data: qgcn eval done{profile_stats}")
 
         # For SGCN evaluation
-        sgcn_mse = 0
+        sgcn_mse, sgcn_r2 = 0, 0
         if self.sgcn_model_exists:
             sp_sgcn_dataset_loader = self.sp_sgcn_train_dataloader if eval_train_data else self.sp_sgcn_test_dataloader
             self.sgcn_model.eval()
             if self.profile_run: start_time = time.time()
             total_mse, total_samples = 0, 0
+            all_predictions, all_targets = [], []
             with torch.no_grad():
                 for data in sp_sgcn_dataset_loader:
                     sgcn_data = self.__move_graph_data_to_device(data)
@@ -612,13 +653,24 @@ class ExperimentRegression:
                     mse = F.mse_loss(pred, sgcn_data.y.float(), reduction='sum')
                     total_mse += mse.item()
                     total_samples += sgcn_data.num_graphs
+                    
+                    # Collect predictions and targets for R² calculation
+                    all_predictions.extend(pred.cpu().numpy().flatten())
+                    all_targets.extend(sgcn_data.y.float().cpu().numpy().flatten())
+            
             sgcn_mse = total_mse / total_samples
+            # Calculate R² score
+            if len(all_predictions) > 1:  # Need at least 2 samples for R²
+                sgcn_r2 = r2_score(all_targets, all_predictions)
+            else:
+                sgcn_r2 = 0.0
+            
             if self.profile_run: 
                 stop_time = time.time()
                 profile_stats = f"; Epoch took a total of {stop_time - start_time}s"
                 print(f"{'train' if eval_train_data else 'test'} data: sgcn eval done{profile_stats}")
 
-        return qgcn_mse, sgcn_mse
+        return qgcn_mse, sgcn_mse, qgcn_r2, sgcn_r2
 
     @time_it
     def run(self, num_epochs=None, eval_training_set=True, run_evaluation=True):
@@ -630,6 +682,8 @@ class ExperimentRegression:
         # Define variables to hold the stats
         test_qgcn_mse_array, test_sgcn_mse_array = [], []
         train_qgcn_mse_array, train_sgcn_mse_array = [], []
+        test_qgcn_r2_array, test_sgcn_r2_array = [], []
+        train_qgcn_r2_array, train_sgcn_r2_array = [], []
         train_qgcn_loss_array, train_sgcn_loss_array = [], []
         learning_rates_qgcn, learning_rates_sgcn = [], []
         
@@ -639,8 +693,10 @@ class ExperimentRegression:
         print(f"Early Stopping: {'Enabled' if self.use_early_stopping else 'Disabled'}")
         
         if self.use_early_stopping:
+            monitor_metric = self.early_stopping_config.get('monitor', 'loss')
             print(f"Early Stopping Config: patience={self.early_stopping_config.get('patience', 20)}, "
-                  f"min_delta={self.early_stopping_config.get('min_delta', 0.0001)}")
+                  f"min_delta={self.early_stopping_config.get('min_delta', 0.0001)}, "
+                  f"monitor={monitor_metric}")
         
         # Flags to track if models should continue training
         qgcn_continue_training = self.qgcn_model_exists
@@ -655,7 +711,7 @@ class ExperimentRegression:
             start_time = time.time()
             print("training... epoch {}".format(epoch))
             
-            # UPDATE FINAL EPOCHS FOR MODELS STILL TRAINING - ADD THIS HERE
+            # UPDATE FINAL EPOCHS FOR MODELS STILL TRAINING
             if qgcn_continue_training:
                 final_qgcn_epoch = epoch
             if sgcn_continue_training:
@@ -669,29 +725,40 @@ class ExperimentRegression:
             train_qgcn_loss_array.append(qgcn_loss)
             train_sgcn_loss_array.append(sgcn_loss)
             
-            train_qgcn_mse, train_sgcn_mse = 0, 0
+            # Evaluate and get both MSE and R²
+            train_qgcn_mse, train_sgcn_mse, train_qgcn_r2, train_sgcn_r2 = 0, 0, 0, 0
             if eval_training_set:
-                train_qgcn_mse, train_sgcn_mse = self.__evaluate(eval_train_data=True)
+                train_qgcn_mse, train_sgcn_mse, train_qgcn_r2, train_sgcn_r2 = self.__evaluate(eval_train_data=True)
             train_qgcn_mse_array.append(train_qgcn_mse)
             train_sgcn_mse_array.append(train_sgcn_mse)
+            train_qgcn_r2_array.append(train_qgcn_r2)
+            train_sgcn_r2_array.append(train_sgcn_r2)
             
-            test_qgcn_mse, test_sgcn_mse = self.__evaluate(eval_train_data=False)
+            test_qgcn_mse, test_sgcn_mse, test_qgcn_r2, test_sgcn_r2 = self.__evaluate(eval_train_data=False)
             test_qgcn_mse_array.append(test_qgcn_mse)
             test_sgcn_mse_array.append(test_sgcn_mse)
+            test_qgcn_r2_array.append(test_qgcn_r2)
+            test_sgcn_r2_array.append(test_sgcn_r2)
             
             # Step schedulers and record learning rates (only for models still training)
             current_lr_qgcn, current_lr_sgcn = 0, 0
             
             if self.qgcn_model_scheduler is not None and qgcn_continue_training:
                 if isinstance(self.qgcn_model_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-                    self.qgcn_model_scheduler.step(test_qgcn_mse)
+                    # Use appropriate metric for plateau scheduler
+                    monitor_metric = self.early_stopping_config.get('monitor', 'loss') if self.use_early_stopping else 'loss'
+                    plateau_metric = test_qgcn_r2 if monitor_metric == 'r2' else test_qgcn_mse
+                    self.qgcn_model_scheduler.step(plateau_metric)
                 else:
                     self.qgcn_model_scheduler.step()
                 current_lr_qgcn = self.qgcn_model_optimizer.param_groups[0]['lr']
             
             if self.sgcn_model_scheduler is not None and sgcn_continue_training:
                 if isinstance(self.sgcn_model_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-                    self.sgcn_model_scheduler.step(test_sgcn_mse)
+                    # Use appropriate metric for plateau scheduler
+                    monitor_metric = self.early_stopping_config.get('monitor', 'loss') if self.use_early_stopping else 'loss'
+                    plateau_metric = test_sgcn_r2 if monitor_metric == 'r2' else test_sgcn_mse
+                    self.sgcn_model_scheduler.step(plateau_metric)
                 else:
                     self.sgcn_model_scheduler.step()
                 current_lr_sgcn = self.sgcn_model_optimizer.param_groups[0]['lr']
@@ -701,13 +768,19 @@ class ExperimentRegression:
             
             # Check early stopping conditions
             if self.use_early_stopping:
+                monitor_metric = self.early_stopping_config.get('monitor', 'loss')
+                
                 if qgcn_continue_training and self.qgcn_early_stopping is not None:
-                    if self.qgcn_early_stopping(test_qgcn_mse, self.qgcn_model):
+                    # Choose the metric to monitor
+                    early_stop_metric = test_qgcn_r2 if monitor_metric == 'r2' else test_qgcn_mse
+                    if self.qgcn_early_stopping(early_stop_metric, self.qgcn_model):
                         print(f"QGCN early stopping triggered at epoch {epoch}")
                         qgcn_continue_training = False
                 
                 if sgcn_continue_training and self.sgcn_early_stopping is not None:
-                    if self.sgcn_early_stopping(test_sgcn_mse, self.sgcn_model):
+                    # Choose the metric to monitor
+                    early_stop_metric = test_sgcn_r2 if monitor_metric == 'r2' else test_sgcn_mse
+                    if self.sgcn_early_stopping(early_stop_metric, self.sgcn_model):
                         print(f"SGCN early stopping triggered at epoch {epoch}")
                         sgcn_continue_training = False
                 
@@ -718,11 +791,13 @@ class ExperimentRegression:
             
             stop_time = time.time()
 
-            # Build the display string
+            # Build the display string with R² scores
             epoch_str = "Epoch: {:03d}, ".format(epoch)
             loss_str = "QGCN_Loss: {:.5f}, SGCN_Loss: {:.5f}, ".format(qgcn_loss, sgcn_loss)
             train_mse_str = "QGCN_Train_MSE: {:.5f}, SGCN_Train_MSE: {:.5f}, ".format(train_qgcn_mse, train_sgcn_mse)
             test_mse_str = "QGCN_Test_MSE: {:.5f}, SGCN_Test_MSE: {:.5f}, ".format(test_qgcn_mse, test_sgcn_mse)
+            train_r2_str = "QGCN_Train_R²: {:.4f}, SGCN_Train_R²: {:.4f}, ".format(train_qgcn_r2, train_sgcn_r2)
+            test_r2_str = "QGCN_Test_R²: {:.4f}, SGCN_Test_R²: {:.4f}, ".format(test_qgcn_r2, test_sgcn_r2)
             lr_str = "QGCN_LR: {:.2e}, SGCN_LR: {:.2e}".format(current_lr_qgcn, current_lr_sgcn)
             
             # Add early stopping status
@@ -733,13 +808,13 @@ class ExperimentRegression:
                     self.sgcn_early_stopping.counter if self.sgcn_early_stopping else 0,
                     self.sgcn_early_stopping.patience if self.sgcn_early_stopping else 0
                 )
-                print("{}".format("".join([epoch_str, loss_str, train_mse_str, test_mse_str, lr_str, ", ", es_str])))
+                print("{}".format("".join([epoch_str, loss_str, train_mse_str, test_mse_str, train_r2_str, test_r2_str, lr_str, ", ", es_str])))
             else:
-                print("{}".format("".join([epoch_str, loss_str, train_mse_str, test_mse_str, lr_str])))
+                print("{}".format("".join([epoch_str, loss_str, train_mse_str, test_mse_str, train_r2_str, test_r2_str, lr_str])))
             
             print(f"Epoch took a total of {stop_time - start_time}s")
 
-        # SAVE FINAL EPOCH INFORMATION - ADD THIS HERE (after the training loop)
+        # SAVE FINAL EPOCH INFORMATION
         self.final_qgcn_epoch = final_qgcn_epoch
         self.final_sgcn_epoch = final_sgcn_epoch
 
@@ -759,6 +834,8 @@ class ExperimentRegression:
                 train_qgcn_loss_array, train_sgcn_loss_array,
                 train_qgcn_mse_array, train_sgcn_mse_array,
                 test_qgcn_mse_array, test_sgcn_mse_array,
+                train_qgcn_r2_array, train_sgcn_r2_array,
+                test_qgcn_r2_array, test_sgcn_r2_array,
                 learning_rates_qgcn, learning_rates_sgcn
             )
         
@@ -777,6 +854,10 @@ class ExperimentRegression:
             'train_sgcn_mse': train_sgcn_mse_array,
             'test_qgcn_mse': test_qgcn_mse_array,
             'test_sgcn_mse': test_sgcn_mse_array,
+            'train_qgcn_r2': train_qgcn_r2_array,
+            'train_sgcn_r2': train_sgcn_r2_array,
+            'test_qgcn_r2': test_qgcn_r2_array,
+            'test_sgcn_r2': test_sgcn_r2_array,
             'learning_rates_qgcn': learning_rates_qgcn,
             'learning_rates_sgcn': learning_rates_sgcn,
             'final_qgcn_epoch': final_qgcn_epoch,
