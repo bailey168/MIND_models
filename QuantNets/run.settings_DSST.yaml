@@ -16,7 +16,7 @@ lrs:
   dsst_custom:
     - 0.001
   gf_custom:
-    - 0.01
+    - 0.001
 
 # Epochs - regression may need more epochs to converge
 epochs:
@@ -44,10 +44,10 @@ early_stopping:
   gf_custom:
     - enabled: true
       patience: 20
-      min_delta: 0.0001
+      min_delta: 0.001
       restore_best_weights: true
       verbose: true
-      monitor: "loss"
+      monitor: "r2"
 
 # Learning rate scheduler configurations
 schedulers:
