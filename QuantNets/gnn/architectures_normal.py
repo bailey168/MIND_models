@@ -28,34 +28,63 @@ class GraphConvNet(torch.nn.Module):
             embedding_dim=embedding_dim
         )
 
-        self.conv_layers = [GraphConv(
-                                    in_channels=embedding_dim,
-                                    out_channels=1 * model_dim,
-                                    bias=bias,
-                                    aggr=aggr
-                                    )] + \
-                           [GraphConv(
-                                    in_channels=1 * model_dim,
-                                    out_channels=2 * model_dim,
-                                    bias=bias,
-                                    aggr=aggr
-                                    )] + \
-                           [GraphConv(
-                                    in_channels=2 * model_dim,
-                                    out_channels=4 * model_dim,
-                                    bias=bias,
-                                    aggr=aggr
-                                    )]
+        # Build conv layers based on layers_num
+        if layers_num == 2:
+            # Two layers: embedding_dim -> 2 * model_dim -> 4 * model_dim
+            self.conv_layers = [GraphConv(
+                                        in_channels=embedding_dim,
+                                        out_channels=2 * model_dim,
+                                        bias=bias,
+                                        aggr=aggr
+                                        )] + \
+                               [GraphConv(
+                                        in_channels=2 * model_dim,
+                                        out_channels=4 * model_dim,
+                                        bias=bias,
+                                        aggr=aggr
+                                        )]
+        else:
+            # Three or more layers: embedding_dim -> model_dim -> 2 * model_dim -> 4 * model_dim -> ...
+            self.conv_layers = [GraphConv(
+                                        in_channels=embedding_dim,
+                                        out_channels=1 * model_dim,
+                                        bias=bias,
+                                        aggr=aggr
+                                        )] + \
+                               [GraphConv(
+                                        in_channels=1 * model_dim,
+                                        out_channels=2 * model_dim,
+                                        bias=bias,
+                                        aggr=aggr
+                                        )] + \
+                               [GraphConv(
+                                        in_channels=2 * model_dim,
+                                        out_channels=4 * model_dim,
+                                        bias=bias,
+                                        aggr=aggr
+                                        )] + \
+                               [GraphConv(
+                                        in_channels=4 * model_dim,
+                                        out_channels=4 * model_dim,
+                                        bias=bias,
+                                        aggr=aggr
+                                        ) for _ in range(layers_num - 3)]
+        
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
-        # Add batch normalization and activation layers
-        self.batch_norms = torch.nn.ModuleList([
-            pyg_nn.norm.GraphNorm(1 * model_dim),
-            pyg_nn.norm.GraphNorm(2 * model_dim)
-        ])
+        # Add batch normalization layers - one for each layer except the last
+        if layers_num == 2:
+            self.batch_norms = torch.nn.ModuleList([
+                pyg_nn.norm.GraphNorm(2 * model_dim)
+            ])
+        else:
+            self.batch_norms = torch.nn.ModuleList([
+                pyg_nn.norm.GraphNorm(1 * model_dim),
+                pyg_nn.norm.GraphNorm(2 * model_dim)
+            ] + [pyg_nn.norm.GraphNorm(4 * model_dim) for _ in range(layers_num - 3)])
+        
         self.activations = torch.nn.ModuleList([
-            torch.nn.LeakyReLU(),
-            torch.nn.LeakyReLU()
+            torch.nn.LeakyReLU() for _ in range(layers_num - 1)
         ])
 
         # Calculate final feature dimension
@@ -153,16 +182,8 @@ class GATv2ConvNet(torch.nn.Module):
                                     edge_dim=1,
                                     residual=True,
                                     dropout=self.dropout_rate
-                                    ) for _ in range(layers_num - 2)] + \
-                           [GATv2Conv(
-                                    in_channels=64,
-                                    out_channels=16,
-                                    heads=4,
-                                    bias=bias,
-                                    edge_dim=1,
-                                    residual=True,
-                                    dropout=self.dropout_rate
-                                    )]
+                                    ) for _ in range(layers_num - 1)]
+        
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
         # Add batch normalization and activation layers
