@@ -5,12 +5,12 @@
 # Grid search parameters - all combinations will be tested
 grid_search:
   gf_custom:
-    dropout_rates: [0.1, 0.3, 0.5, 0.7]
-    weight_decays: [0.001, 0.01, 0.1]
-    layers_nums: [2, 3, 4]
-    # dropout_rates: [0.5]
-    # weight_decays: [0.1]
-    # layers_nums: [3]
+    # dropout_rates: [0.1, 0.3, 0.5, 0.7]
+    # weight_decays: [0.001, 0.01, 0.1]
+    # layers_nums: [2, 3, 4]
+    dropout_rates: [0.5]
+    weight_decays: [0.1]
+    layers_nums: [3]
 # Learning rates - regression typically needs different rates than classification
 lrs:
   dsst_custom:
