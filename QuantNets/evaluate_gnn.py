@@ -54,62 +54,53 @@ class ModelEvaluator:
         # Check for training info file
         training_info_path = os.path.join(model_dir, "training_info.txt")
         if os.path.exists(training_info_path):
-            print(f"Training information found:")
+            print("Training information found:")
             with open(training_info_path, 'r') as f:
                 print(f.read())
-        
-        # Check for experiment summary
-        summary_path = os.path.join(model_dir, "experiment_summary.txt")
-        if os.path.exists(summary_path):
-            print(f"Experiment summary found:")
-            with open(summary_path, 'r') as f:
-                print(f.read())
-        
-        # Method 1: Try loading with metadata (most robust)
-        try:
-            checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
-            if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
-                print(f"Loaded model from epoch: {checkpoint.get('final_epoch', 'unknown')}")
-                print(f"Model type: {checkpoint.get('model_config', {}).get('model_type', 'unknown')}")
-                
-                # Try to load the complete model file instead
-                complete_model_path = os.path.join(model_dir, "model_complete.pth")
-                if os.path.exists(complete_model_path):
-                    print(f"Loading complete model from: {complete_model_path}")
-                    model = torch.load(complete_model_path, map_location=self.device, weights_only=False)
-                    return model
-                else:
-                    print("Complete model file not found, trying to reconstruct from state dict")
-                    # We need to reconstruct the model - this requires knowing the architecture
-                    # For now, let's try the complete model approach
-                    raise Exception("Cannot reconstruct model from state dict without architecture info")
-        except Exception as e:
-            print(f"Failed to load with metadata: {e}")
-        
-        # Method 2: Try loading the complete model directly  
-        try:
-            complete_model_path = os.path.join(model_dir, "model_complete.pth")
-            if os.path.exists(complete_model_path):
-                print(f"Loading complete model from: {complete_model_path}")
-                model = torch.load(complete_model_path, map_location=self.device, weights_only=False)
-                print(f"Loaded complete model successfully")
-                return model
-        except Exception as e:
-            print(f"Failed to load complete model: {e}")
-        
-        # Method 3: Try loading the original model.pth as a complete model
-        try:
-            print(f"Attempting to load {model_path} as complete model...")
-            model = torch.load(model_path, map_location=self.device, weights_only=False)
-            if hasattr(model, 'eval'):  # Check if it's actually a model
-                print(f"Loaded model directly from {model_path}")
-                return model
-            else:
-                print(f"Loaded object is not a model (type: {type(model)})")
-        except Exception as e:
-            print(f"Failed to load model directly: {e}")
     
-        raise ValueError(f"Could not load model from {model_path}")
+        # Try to load model.pth first (this should contain the best model after fixes)
+        try:
+            print(f"Loading best model from: {model_path}")
+            checkpoint = torch.load(model_path, map_location=self.device)
+            
+            if isinstance(checkpoint, dict):
+                if 'model_state_dict' in checkpoint:
+                    # Load the model architecture first
+                    model_complete_path = os.path.join(model_dir, "model_complete.pth")
+                    if os.path.exists(model_complete_path):
+                        print(f"Loading complete model from: {model_complete_path}")
+                        model = torch.load(model_complete_path, map_location=self.device)
+                        # Load the best weights
+                        model.load_state_dict(checkpoint['model_state_dict'])
+                        
+                        # Show which epoch was loaded
+                        best_epoch = checkpoint.get('best_epoch', checkpoint.get('final_epoch', 'unknown'))
+                        is_best = checkpoint.get('is_best_model', False)
+                        print(f"Loaded model from epoch: {best_epoch}")
+                        if is_best:
+                            print("✓ This is the best performing model")
+                        
+                        return model.to(self.device)
+                    else:
+                        raise FileNotFoundError("Complete model file not found")
+                else:
+                    # Old format - direct model
+                    return checkpoint.to(self.device)
+            else:
+                # Direct model object
+                return checkpoint.to(self.device)
+                
+        except Exception as e:
+            print(f"Failed to load from {model_path}: {e}")
+            
+            # Fallback to complete model
+            model_complete_path = os.path.join(model_dir, "model_complete.pth")
+            if os.path.exists(model_complete_path):
+                print(f"Falling back to complete model: {model_complete_path}")
+                model = torch.load(model_complete_path, map_location=self.device)
+                return model.to(self.device)
+            else:
+                raise Exception(f"Could not load model from {model_path} or {model_complete_path}")
 
     def _move_data_to_device(self, data):
         """Move graph data to target device."""
