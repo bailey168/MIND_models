@@ -426,20 +426,26 @@ class ExperimentRegression:
     def __cache_models(self):
         """Cache models with epoch information."""
         if self.qgcn_model_exists:
-            # Save complete model first (most reliable for loading)
-            torch.save(self.qgcn_model, os.path.join(self.qgcn_specific_run_dir, "model_complete.pth"))
+            # Only save if we didn't use early stopping or if early stopping didn't trigger
+            should_save_qgcn = not self.use_early_stopping or not (self.qgcn_early_stopping and self.qgcn_early_stopping.early_stop)
             
-            # Save model with metadata including epoch info
-            qgcn_save_dict = {
-                'model_state_dict': self.qgcn_model.state_dict(),
-                'optimizer_state_dict': self.qgcn_model_optimizer.state_dict(),
-                'final_epoch': getattr(self, 'final_qgcn_epoch', 0),
-                'model_config': {
-                    'model_type': type(self.qgcn_model).__name__,
-                    'architecture': str(self.qgcn_model)
+            if should_save_qgcn:
+                # Save complete model first (most reliable for loading)
+                torch.save(self.qgcn_model, os.path.join(self.qgcn_specific_run_dir, "model_complete.pth"))
+                
+                # Save model with metadata including epoch info
+                qgcn_save_dict = {
+                    'model_state_dict': self.qgcn_model.state_dict(),
+                    'optimizer_state_dict': self.qgcn_model_optimizer.state_dict(),
+                    'final_epoch': getattr(self, 'final_qgcn_epoch', 0),
+                    'model_config': {
+                        'model_type': type(self.qgcn_model).__name__,
+                        'architecture': str(self.qgcn_model)
+                    }
                 }
-            }
-            torch.save(qgcn_save_dict, os.path.join(self.qgcn_specific_run_dir, "model.pth"))
+                torch.save(qgcn_save_dict, os.path.join(self.qgcn_specific_run_dir, "model.pth"))
+            else:
+                print(f"Skipping final QGCN model save - early stopping used, best model already saved")
             
             # Save epoch info in a separate text file for easy reading
             with open(os.path.join(self.qgcn_specific_run_dir, "training_info.txt"), 'w') as f:
@@ -450,20 +456,26 @@ class ExperimentRegression:
                     f.write(f"Early stopped: {'Yes' if self.qgcn_early_stopping.early_stop else 'No'}\n")
 
         if self.sgcn_model_exists:
-            # Save complete model first (most reliable for loading)
-            torch.save(self.sgcn_model, os.path.join(self.sgcn_specific_run_dir, "model_complete.pth"))
+            # Only save if we didn't use early stopping or if early stopping didn't trigger
+            should_save_sgcn = not self.use_early_stopping or not (self.sgcn_early_stopping and self.sgcn_early_stopping.early_stop)
             
-            # Save model with metadata including epoch info
-            sgcn_save_dict = {
-                'model_state_dict': self.sgcn_model.state_dict(),
-                'optimizer_state_dict': self.sgcn_model_optimizer.state_dict(),
-                'final_epoch': getattr(self, 'final_sgcn_epoch', 0),
-                'model_config': {
-                    'model_type': type(self.sgcn_model).__name__,
-                    'architecture': str(self.sgcn_model)
+            if should_save_sgcn:
+                # Save complete model first (most reliable for loading)
+                torch.save(self.sgcn_model, os.path.join(self.sgcn_specific_run_dir, "model_complete.pth"))
+                
+                # Save model with metadata including epoch info
+                sgcn_save_dict = {
+                    'model_state_dict': self.sgcn_model.state_dict(),
+                    'optimizer_state_dict': self.sgcn_model_optimizer.state_dict(),
+                    'final_epoch': getattr(self, 'final_sgcn_epoch', 0),
+                    'model_config': {
+                        'model_type': type(self.sgcn_model).__name__,
+                        'architecture': str(self.sgcn_model)
+                    }
                 }
-            }
-            torch.save(sgcn_save_dict, os.path.join(self.sgcn_specific_run_dir, "model.pth"))
+                torch.save(sgcn_save_dict, os.path.join(self.sgcn_specific_run_dir, "model.pth"))
+            else:
+                print(f"Skipping final SGCN model save - early stopping used, best model already saved")
             
             # Save epoch info in a separate text file for easy reading
             with open(os.path.join(self.sgcn_specific_run_dir, "training_info.txt"), 'w') as f:
@@ -472,6 +484,8 @@ class ExperimentRegression:
                 f.write(f"Early stopping: {'Yes' if self.use_early_stopping else 'No'}\n")
                 if self.use_early_stopping and hasattr(self, 'sgcn_early_stopping'):
                     f.write(f"Early stopped: {'Yes' if self.sgcn_early_stopping.early_stop else 'No'}\n")
+                    if self.sgcn_early_stopping.early_stop and hasattr(self.sgcn_early_stopping, 'best_epoch'):
+                        f.write(f"Best model epoch: {getattr(self.sgcn_early_stopping, 'best_epoch', 'unknown')}\n")
 
     def __cache_results(self, train_qgcn_loss_array, train_sgcn_loss_array, 
                         train_qgcn_mse_array, train_sgcn_mse_array,
@@ -610,11 +624,12 @@ class ExperimentRegression:
             # Save complete model first
             torch.save(self.sgcn_model, os.path.join(self.sgcn_specific_run_dir, "model_complete.pth"))
             
-            # Save state dict with metadata
+            # Save state dict with metadata - THIS IS THE KEY CHANGE
             sgcn_save_dict = {
                 'model_state_dict': self.sgcn_model.state_dict(),
                 'optimizer_state_dict': self.sgcn_model_optimizer.state_dict(),
                 'best_epoch': current_epoch or getattr(self, 'current_epoch', 0),
+                'final_epoch': current_epoch or getattr(self, 'current_epoch', 0),  # Add this
                 'is_best_model': True,  # Mark as best epoch
                 'model_config': {
                     'model_type': type(self.sgcn_model).__name__,
@@ -623,16 +638,16 @@ class ExperimentRegression:
             }
             torch.save(sgcn_save_dict, os.path.join(self.sgcn_specific_run_dir, "model.pth"))
             print(f"✓ Saved best SGCN model from epoch {current_epoch}")
-    
+
         elif model_type == 'qgcn' and self.qgcn_model_exists:
-            # Save complete model first
+            # Similar changes for QGCN
             torch.save(self.qgcn_model, os.path.join(self.qgcn_specific_run_dir, "model_complete.pth"))
             
-            # Save state dict with metadata
             qgcn_save_dict = {
                 'model_state_dict': self.qgcn_model.state_dict(),
                 'optimizer_state_dict': self.qgcn_model_optimizer.state_dict(),
                 'best_epoch': current_epoch or getattr(self, 'current_epoch', 0),
+                'final_epoch': current_epoch or getattr(self, 'current_epoch', 0),  # Add this
                 'is_best_model': True,  # Mark as best epoch
                 'model_config': {
                     'model_type': type(self.qgcn_model).__name__,
