@@ -39,6 +39,8 @@ class EarlyStopping:
         Returns:
             bool: True if training should stop, False otherwise
         """
+        current_epoch = getattr(model, 'current_epoch', 0) if model else 0
+        
         if self.monitor == 'r2':
             # For R², higher is better
             score = val_metric
@@ -50,7 +52,7 @@ class EarlyStopping:
         
         if self.best_score is None:
             self.best_score = score
-            self.best_epoch = getattr(model, 'current_epoch', 0)  # Add this line
+            self.best_epoch = current_epoch  # Initialize best_epoch
             if self.restore_best_weights and model is not None:
                 self.best_weights = model.state_dict().copy()
             if self.verbose:
@@ -66,7 +68,7 @@ class EarlyStopping:
                     print('Early stopping triggered')
         else:
             self.best_score = score
-            self.best_epoch = getattr(model, 'current_epoch', 0)  # Add this line
+            self.best_epoch = current_epoch  # Update best_epoch when improvement found
             if self.restore_best_weights and model is not None:
                 self.best_weights = model.state_dict().copy()
             self.counter = 0

@@ -484,8 +484,9 @@ class ExperimentRegression:
                 f.write(f"Early stopping: {'Yes' if self.use_early_stopping else 'No'}\n")
                 if self.use_early_stopping and hasattr(self, 'sgcn_early_stopping'):
                     f.write(f"Early stopped: {'Yes' if self.sgcn_early_stopping.early_stop else 'No'}\n")
-                    if self.sgcn_early_stopping.early_stop and hasattr(self.sgcn_early_stopping, 'best_epoch'):
+                    if hasattr(self.sgcn_early_stopping, 'best_epoch'):
                         f.write(f"Best model epoch: {getattr(self.sgcn_early_stopping, 'best_epoch', 'unknown')}\n")
+                        f.write(f"Monitor metric: {self.early_stopping_config.get('monitor', 'loss')}\n")
 
     def __cache_results(self, train_qgcn_loss_array, train_sgcn_loss_array, 
                         train_qgcn_mse_array, train_sgcn_mse_array,
@@ -624,12 +625,12 @@ class ExperimentRegression:
             # Save complete model first
             torch.save(self.sgcn_model, os.path.join(self.sgcn_specific_run_dir, "model_complete.pth"))
             
-            # Save state dict with metadata - THIS IS THE KEY CHANGE
+            # Save state dict with metadata
             sgcn_save_dict = {
                 'model_state_dict': self.sgcn_model.state_dict(),
                 'optimizer_state_dict': self.sgcn_model_optimizer.state_dict(),
                 'best_epoch': current_epoch or getattr(self, 'current_epoch', 0),
-                'final_epoch': current_epoch or getattr(self, 'current_epoch', 0),  # Add this
+                'final_epoch': current_epoch or getattr(self, 'current_epoch', 0),
                 'is_best_model': True,  # Mark as best epoch
                 'model_config': {
                     'model_type': type(self.sgcn_model).__name__,
@@ -637,7 +638,11 @@ class ExperimentRegression:
                 }
             }
             torch.save(sgcn_save_dict, os.path.join(self.sgcn_specific_run_dir, "model.pth"))
-            print(f"✓ Saved best SGCN model from epoch {current_epoch}")
+            if self.use_early_stopping:
+                monitor_metric = self.early_stopping_config.get('monitor', 'loss')
+                print(f"✓ Saved best SGCN model from epoch {current_epoch} (best {monitor_metric})")
+            else:
+                print(f"✓ Saved SGCN model from epoch {current_epoch}")
 
         elif model_type == 'qgcn' and self.qgcn_model_exists:
             # Similar changes for QGCN
@@ -647,7 +652,7 @@ class ExperimentRegression:
                 'model_state_dict': self.qgcn_model.state_dict(),
                 'optimizer_state_dict': self.qgcn_model_optimizer.state_dict(),
                 'best_epoch': current_epoch or getattr(self, 'current_epoch', 0),
-                'final_epoch': current_epoch or getattr(self, 'current_epoch', 0),  # Add this
+                'final_epoch': current_epoch or getattr(self, 'current_epoch', 0),
                 'is_best_model': True,  # Mark as best epoch
                 'model_config': {
                     'model_type': type(self.qgcn_model).__name__,
@@ -655,7 +660,11 @@ class ExperimentRegression:
                 }
             }
             torch.save(qgcn_save_dict, os.path.join(self.qgcn_specific_run_dir, "model.pth"))
-            print(f"✓ Saved best QGCN model from epoch {current_epoch}")
+            if self.use_early_stopping:
+                monitor_metric = self.early_stopping_config.get('monitor', 'loss')
+                print(f"✓ Saved best QGCN model from epoch {current_epoch} (best {monitor_metric})")
+            else:
+                print(f"✓ Saved QGCN model from epoch {current_epoch}")
 
     def __evaluate(self, eval_train_data=False):
         """Evaluate models on train or test data and return both MSE and R²."""
@@ -764,6 +773,12 @@ class ExperimentRegression:
             start_time = time.time()
             print("training... epoch {}".format(epoch))
             
+            # Set current epoch for models (for early stopping tracking)
+            if self.qgcn_model_exists:
+                self.qgcn_model.current_epoch = epoch
+            if self.sgcn_model_exists:
+                self.sgcn_model.current_epoch = epoch
+            
             # UPDATE FINAL EPOCHS FOR MODELS STILL TRAINING
             if qgcn_continue_training:
                 final_qgcn_epoch = epoch
@@ -826,22 +841,26 @@ class ExperimentRegression:
                 if qgcn_continue_training and self.qgcn_early_stopping is not None:
                     # Choose the metric to monitor
                     early_stop_metric = test_qgcn_r2 if monitor_metric == 'r2' else test_qgcn_mse
-                    if not self.qgcn_early_stopping(early_stop_metric, self.qgcn_model):
-                        # Model improved, save it as the best model
+                    should_stop = self.qgcn_early_stopping(early_stop_metric, self.qgcn_model)
+                    
+                    # ONLY save if the model improved (counter was reset to 0)
+                    if not should_stop and self.qgcn_early_stopping.counter == 0:
                         if self.cache_run:
                             self.__save_best_model('qgcn', epoch)
-                    else:
+                    elif should_stop:
                         print(f"QGCN early stopping triggered at epoch {epoch}")
                         qgcn_continue_training = False
                 
                 if sgcn_continue_training and self.sgcn_early_stopping is not None:
                     # Choose the metric to monitor
                     early_stop_metric = test_sgcn_r2 if monitor_metric == 'r2' else test_sgcn_mse
-                    if not self.sgcn_early_stopping(early_stop_metric, self.sgcn_model):
-                        # Model improved, save it as the best model
+                    should_stop = self.sgcn_early_stopping(early_stop_metric, self.sgcn_model)
+                    
+                    # ONLY save if the model improved (counter was reset to 0)
+                    if not should_stop and self.sgcn_early_stopping.counter == 0:
                         if self.cache_run:
                             self.__save_best_model('sgcn', epoch)
-                    else:
+                    elif should_stop:
                         print(f"SGCN early stopping triggered at epoch {epoch}")
                         sgcn_continue_training = False
                 
@@ -849,6 +868,14 @@ class ExperimentRegression:
                 if not qgcn_continue_training and not sgcn_continue_training:
                     print(f"All models stopped early at epoch {epoch}. Ending training.")
                     break
+            else:
+                # Without early stopping, save models periodically or at the end
+                if epoch == num_epochs:  # Save at the final epoch
+                    if self.cache_run:
+                        if self.qgcn_model_exists:
+                            self.__save_best_model('qgcn', epoch)
+                        if self.sgcn_model_exists:
+                            self.__save_best_model('sgcn', epoch)
             
             stop_time = time.time()
 
