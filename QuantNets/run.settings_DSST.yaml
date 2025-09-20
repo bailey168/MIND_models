@@ -36,7 +36,7 @@ runs:
 early_stopping:
   dsst_custom:
     - enabled: true
-      patience: 30
+      patience: 25
       min_delta: 0.0001
       restore_best_weights: true
       verbose: true

@@ -101,11 +101,7 @@ class GraphConvNet(torch.nn.Module):
             torch.nn.BatchNorm1d(model_dim * 2),
             torch.nn.LeakyReLU(),
             torch.nn.Dropout(self.dropout_rate),
-            torch.nn.Linear(model_dim * 2, model_dim),
-            torch.nn.BatchNorm1d(model_dim),
-            torch.nn.LeakyReLU(),
-            torch.nn.Dropout(self.dropout_rate),
-            torch.nn.Linear(model_dim, out_dim)
+            torch.nn.Linear(model_dim * 2, out_dim)
         )
 
     def forward(self, data):
@@ -167,21 +163,23 @@ class GATv2ConvNet(torch.nn.Module):
 
         self.conv_layers = [GATv2Conv(
                                     in_channels=embedding_dim,
-                                    out_channels=16,
+                                    out_channels=64,
                                     heads=4,
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
-                                    dropout=self.dropout_rate
+                                    dropout=self.dropout_rate,
+                                    concat=False
                                     )] + \
                            [GATv2Conv(
                                     in_channels=64,
-                                    out_channels=16,
+                                    out_channels=64,
                                     heads=4,
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
-                                    dropout=self.dropout_rate
+                                    dropout=self.dropout_rate,
+                                    concat=False
                                     ) for _ in range(layers_num - 1)]
         
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
@@ -212,7 +210,11 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.BatchNorm1d(32),
             torch.nn.LeakyReLU(),
             torch.nn.Dropout(self.dropout_rate),
-            torch.nn.Linear(32, out_dim)
+            torch.nn.Linear(32, 16),
+            torch.nn.BatchNorm1d(16),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(self.dropout_rate),
+            torch.nn.Linear(16, out_dim)
         )
 
     def forward(self, data):
