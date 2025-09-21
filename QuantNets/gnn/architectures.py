@@ -135,7 +135,7 @@ class GATv2ConvNet(torch.nn.Module):
         )
 
         # Use consistent dimensions: 16 * 4 = 64 for all layers
-        out_channels_per_head = 16
+        out_channels_per_head = 8
         heads = 4
         hidden_dim = out_channels_per_head * heads
 
