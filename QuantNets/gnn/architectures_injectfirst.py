@@ -140,8 +140,19 @@ class GATv2ConvNet(torch.nn.Module):
         heads = 4
         hidden_dim = out_channels_per_head * heads
 
-        self.input_projection = torch.nn.Linear(embedding_dim, hidden_dim)
-
+        if self.include_demo:
+            # 1-layer MLP for demographic data (initial)
+            self.initial_demo_mlp = torch.nn.Linear(self.demo_dim, 16)
+            
+            # 2-layer MLP to process concatenated embeddings + demographics before first graph layer
+            self.initial_downsize_mlp = torch.nn.Sequential(
+                torch.nn.Linear(embedding_dim + 16, hidden_dim * 2),
+                torch.nn.LeakyReLU(),
+                torch.nn.Dropout(self.dropout_rate),
+                torch.nn.Linear(hidden_dim * 2, hidden_dim)
+            )
+        else:
+            self.input_projection = torch.nn.Linear(embedding_dim, hidden_dim)
 
         # All conv layers have same input/output dimensions
         self.conv_layers = torch.nn.ModuleList([
@@ -155,7 +166,6 @@ class GATv2ConvNet(torch.nn.Module):
                 dropout=self.dropout_rate
             ) for _ in range(layers_num)
         ])
-
 
         if self.include_demo:
             # 1-layer MLP for demographic data at each layer
@@ -187,7 +197,23 @@ class GATv2ConvNet(torch.nn.Module):
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
-        data.x = self.input_projection(data.x)
+        
+        # Process initial embeddings + demographics before first graph layer
+        if self.include_demo and hasattr(data, 'demographics'):
+            # Process demographics through initial 1-layer MLP
+            demo_features = self.initial_demo_mlp(data.demographics)
+            
+            # Expand demographics to match number of nodes
+            nodes_per_graph = torch.bincount(data.batch)
+            demo_expanded = torch.repeat_interleave(demo_features, nodes_per_graph, dim=0)
+            
+            # Concatenate node embeddings with demographic features
+            combined_initial = torch.cat([data.x, demo_expanded], dim=1)
+            
+            # Process through 2-layer MLP
+            data.x = self.initial_downsize_mlp(combined_initial)
+        else:
+            data.x = self.input_projection(data.x)
 
         for i in range(self.layers_num):
             # Apply graph convolution
