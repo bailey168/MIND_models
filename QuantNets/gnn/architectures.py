@@ -220,7 +220,8 @@ class GATv2ConvNet(torch.nn.Module):
             edge_attr = data.edge_attr
             data.x = self.conv_layers[i](data.x, data.edge_index, edge_attr=edge_attr)
             
-            if self.include_demo and hasattr(data, 'demographics'):
+            # Only concatenate demographics for layers except the last one
+            if self.include_demo and hasattr(data, 'demographics') and i < self.layers_num - 1:
                 # Process demographics through 1-layer MLP
                 demo_features = self.demo_mlps[i](data.demographics)
                 
