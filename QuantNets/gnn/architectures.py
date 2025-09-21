@@ -166,10 +166,10 @@ class GATv2ConvNet(torch.nn.Module):
             # 2-layer MLP to downsize concatenated features
             self.downsize_mlps = torch.nn.ModuleList([
                 torch.nn.Sequential(
-                    torch.nn.Linear(hidden_dim + 16, hidden_dim * 2),
+                    torch.nn.Linear(hidden_dim + 16, hidden_dim),
                     torch.nn.LeakyReLU(),
                     torch.nn.Dropout(self.dropout_rate),
-                    torch.nn.Linear(hidden_dim * 2, hidden_dim)
+                    torch.nn.Linear(hidden_dim, hidden_dim)
                 ) for _ in range(self.layers_num)
             ])
 
