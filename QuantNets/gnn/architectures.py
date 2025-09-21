@@ -2,7 +2,8 @@ import torch
 import torch.nn.functional as F
 import torch_geometric.transforms as T
 import torch_geometric.nn as pyg_nn
-from torch_geometric.nn import global_mean_pool, GlobalAttention
+from torch_geometric.nn import global_mean_pool
+from torch_geometric.nn.aggr import AttentionalAggregation
 from torch_geometric.nn import GraphConv, GATv2Conv
 
 # GraphConv. 2018 https://arxiv.org/abs/1810.02244
@@ -196,14 +197,14 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.ELU() for _ in range(layers_num - 1)
         ])
 
-        # Global attention pooling layer
+        # Use AttentionalAggregation instead of GlobalAttention
         # Gate network for attention weights
         attention_gate = torch.nn.Sequential(
             torch.nn.Linear(64, 32),
             torch.nn.ELU(),
             torch.nn.Linear(32, 1)
         )
-        self.global_attention_pool = GlobalAttention(gate_nn=attention_gate)
+        self.global_attention_pool = AttentionalAggregation(gate_nn=attention_gate)
 
         # Calculate final feature dimension
         graph_features_dim = 64
@@ -237,7 +238,7 @@ class GATv2ConvNet(torch.nn.Module):
                 data.x = self.batch_norms[i](data.x)
                 data.x = self.activations[i](data.x)
 
-        # Use global attention pooling instead of global mean pooling
+        # Use attentional aggregation instead of global attention pooling
         graph_features = self.global_attention_pool(data.x, data.batch)
 
         # Process demographic features through linear layer and concatenate
