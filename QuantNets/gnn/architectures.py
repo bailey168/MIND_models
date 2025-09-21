@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import torch_geometric.transforms as T
 import torch_geometric.nn as pyg_nn
-from torch_geometric.nn import global_mean_pool, global_max_pool
+from torch_geometric.nn import global_mean_pool, GlobalAttention
 from torch_geometric.nn import GraphConv, GATv2Conv
 
 # GraphConv. 2018 https://arxiv.org/abs/1810.02244
@@ -196,8 +196,17 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.ELU() for _ in range(layers_num - 1)
         ])
 
-        # Calculate final feature dimension - tripled due to concatenation of mean, max, and std pooling
-        graph_features_dim = 64 * 3  # 64 from mean + 64 from max + 64 from std pooling
+        # Global attention pooling layer
+        # Gate network for attention weights
+        attention_gate = torch.nn.Sequential(
+            torch.nn.Linear(64, 32),
+            torch.nn.ELU(),
+            torch.nn.Linear(32, 1)
+        )
+        self.global_attention_pool = GlobalAttention(gate_nn=attention_gate)
+
+        # Calculate final feature dimension
+        graph_features_dim = 64
 
         if self.include_demo:
             self.demo_projection = torch.nn.Linear(self.demo_dim, 16)
@@ -217,33 +226,6 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.Linear(32, out_dim)
         )
 
-    def global_std_pool(self, x, batch, eps=1e-8):
-        """
-        Global standard deviation pooling.
-        
-        Args:
-            x: Node features [num_nodes, num_features]
-            batch: Batch assignment vector [num_nodes]
-            eps: Small value to avoid division by zero
-            
-        Returns:
-            Standard deviation pooled features [batch_size, num_features]
-        """
-        # Get mean for each graph
-        mean = global_mean_pool(x, batch)
-        
-        # Expand mean to match node dimensions for broadcasting
-        mean_expanded = mean[batch]
-        
-        # Compute squared differences
-        squared_diff = (x - mean_expanded) ** 2
-        
-        # Pool squared differences
-        mean_squared_diff = global_mean_pool(squared_diff, batch)
-        
-        # Return standard deviation
-        return torch.sqrt(mean_squared_diff + eps)
-
     def forward(self, data):
         data.x = self.node_embedding(data.x)
 
@@ -255,11 +237,8 @@ class GATv2ConvNet(torch.nn.Module):
                 data.x = self.batch_norms[i](data.x)
                 data.x = self.activations[i](data.x)
 
-        # Concatenate global mean pooling, global max pooling, and global std pooling
-        graph_features_mean = global_mean_pool(data.x, data.batch)
-        graph_features_max = global_max_pool(data.x, data.batch)
-        graph_features_std = self.global_std_pool(data.x, data.batch)
-        graph_features = torch.cat([graph_features_mean, graph_features_max, graph_features_std], dim=1)
+        # Use global attention pooling instead of global mean pooling
+        graph_features = self.global_attention_pool(data.x, data.batch)
 
         # Process demographic features through linear layer and concatenate
         if self.include_demo and hasattr(data, 'demographics'):
