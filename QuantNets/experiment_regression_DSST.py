@@ -426,26 +426,46 @@ class ExperimentRegression:
     def __cache_models(self):
         """Cache models with epoch information."""
         if self.qgcn_model_exists:
-            # Only save if we didn't use early stopping or if early stopping didn't trigger
-            should_save_qgcn = not self.use_early_stopping or not (self.qgcn_early_stopping and self.qgcn_early_stopping.early_stop)
+            # When early stopping is enabled, we should NOT save again if early stopping was used
+            # because the best model was already saved during training
+            # BUT if early stopping was enabled and DIDN'T trigger, we should save the best model
+            should_save_qgcn = True
+            
+            if self.use_early_stopping and hasattr(self, 'qgcn_early_stopping') and self.qgcn_early_stopping:
+                if self.qgcn_early_stopping.early_stop:
+                    # Early stopping triggered - best model already saved, don't save again
+                    should_save_qgcn = False
+                    print(f"Skipping final QGCN model save - early stopping triggered, best model already saved")
+                else:
+                    # Early stopping was enabled but didn't trigger - save the best model we found
+                    should_save_qgcn = True
+                    print(f"Early stopping enabled but didn't trigger - saving best QGCN model")
             
             if should_save_qgcn:
+                # For early stopping that didn't trigger, restore best weights before saving
+                if self.use_early_stopping and hasattr(self, 'qgcn_early_stopping') and self.qgcn_early_stopping:
+                    if hasattr(self.qgcn_early_stopping, 'best_weights') and self.qgcn_early_stopping.best_weights:
+                        self.qgcn_model.load_state_dict(self.qgcn_early_stopping.best_weights)
+                        print(f"Restored QGCN best weights before final save (best epoch: {getattr(self.qgcn_early_stopping, 'best_epoch', 'unknown')})")
+                
                 # Save complete model first (most reliable for loading)
                 torch.save(self.qgcn_model, os.path.join(self.qgcn_specific_run_dir, "model_complete.pth"))
                 
                 # Save model with metadata including epoch info
+                best_epoch = getattr(self.qgcn_early_stopping, 'best_epoch', self.final_qgcn_epoch) if self.use_early_stopping and hasattr(self, 'qgcn_early_stopping') else self.final_qgcn_epoch
+                
                 qgcn_save_dict = {
                     'model_state_dict': self.qgcn_model.state_dict(),
                     'optimizer_state_dict': self.qgcn_model_optimizer.state_dict(),
+                    'best_epoch': best_epoch,
                     'final_epoch': getattr(self, 'final_qgcn_epoch', 0),
+                    'is_best_model': True,
                     'model_config': {
                         'model_type': type(self.qgcn_model).__name__,
                         'architecture': str(self.qgcn_model)
                     }
                 }
                 torch.save(qgcn_save_dict, os.path.join(self.qgcn_specific_run_dir, "model.pth"))
-            else:
-                print(f"Skipping final QGCN model save - early stopping used, best model already saved")
             
             # Save epoch info in a separate text file for easy reading
             with open(os.path.join(self.qgcn_specific_run_dir, "training_info.txt"), 'w') as f:
@@ -454,28 +474,49 @@ class ExperimentRegression:
                 f.write(f"Early stopping: {'Yes' if self.use_early_stopping else 'No'}\n")
                 if self.use_early_stopping and hasattr(self, 'qgcn_early_stopping'):
                     f.write(f"Early stopped: {'Yes' if self.qgcn_early_stopping.early_stop else 'No'}\n")
+                    if hasattr(self.qgcn_early_stopping, 'best_epoch'):
+                        f.write(f"Best model epoch: {getattr(self.qgcn_early_stopping, 'best_epoch', 'unknown')}\n")
+                        f.write(f"Monitor metric: {self.early_stopping_config.get('monitor', 'loss')}\n")
 
         if self.sgcn_model_exists:
-            # Only save if we didn't use early stopping or if early stopping didn't trigger
-            should_save_sgcn = not self.use_early_stopping or not (self.sgcn_early_stopping and self.sgcn_early_stopping.early_stop)
+            # Same logic for SGCN
+            should_save_sgcn = True
+            
+            if self.use_early_stopping and hasattr(self, 'sgcn_early_stopping') and self.sgcn_early_stopping:
+                if self.sgcn_early_stopping.early_stop:
+                    # Early stopping triggered - best model already saved, don't save again
+                    should_save_sgcn = False
+                    print(f"Skipping final SGCN model save - early stopping triggered, best model already saved")
+                else:
+                    # Early stopping was enabled but didn't trigger - save the best model we found
+                    should_save_sgcn = True
+                    print(f"Early stopping enabled but didn't trigger - saving best SGCN model")
             
             if should_save_sgcn:
+                # For early stopping that didn't trigger, restore best weights before saving
+                if self.use_early_stopping and hasattr(self, 'sgcn_early_stopping') and self.sgcn_early_stopping:
+                    if hasattr(self.sgcn_early_stopping, 'best_weights') and self.sgcn_early_stopping.best_weights:
+                        self.sgcn_model.load_state_dict(self.sgcn_early_stopping.best_weights)
+                        print(f"Restored SGCN best weights before final save (best epoch: {getattr(self.sgcn_early_stopping, 'best_epoch', 'unknown')})")
+                
                 # Save complete model first (most reliable for loading)
                 torch.save(self.sgcn_model, os.path.join(self.sgcn_specific_run_dir, "model_complete.pth"))
                 
                 # Save model with metadata including epoch info
+                best_epoch = getattr(self.sgcn_early_stopping, 'best_epoch', self.final_sgcn_epoch) if self.use_early_stopping and hasattr(self, 'sgcn_early_stopping') else self.final_sgcn_epoch
+                
                 sgcn_save_dict = {
                     'model_state_dict': self.sgcn_model.state_dict(),
                     'optimizer_state_dict': self.sgcn_model_optimizer.state_dict(),
+                    'best_epoch': best_epoch,
                     'final_epoch': getattr(self, 'final_sgcn_epoch', 0),
+                    'is_best_model': True,
                     'model_config': {
                         'model_type': type(self.sgcn_model).__name__,
                         'architecture': str(self.sgcn_model)
                     }
                 }
                 torch.save(sgcn_save_dict, os.path.join(self.sgcn_specific_run_dir, "model.pth"))
-            else:
-                print(f"Skipping final SGCN model save - early stopping used, best model already saved")
             
             # Save epoch info in a separate text file for easy reading
             with open(os.path.join(self.sgcn_specific_run_dir, "training_info.txt"), 'w') as f:
@@ -905,18 +946,6 @@ class ExperimentRegression:
         # SAVE FINAL EPOCH INFORMATION
         self.final_qgcn_epoch = final_qgcn_epoch
         self.final_sgcn_epoch = final_sgcn_epoch
-
-        # Restore best weights if early stopping was used
-        if self.use_early_stopping:
-            if self.qgcn_early_stopping and self.qgcn_early_stopping.early_stop:
-                if self.qgcn_early_stopping.restore_best_weights:
-                    self.qgcn_early_stopping.restore_weights(self.qgcn_model)
-                    print(f"Restored QGCN best weights from early stopping")
-            
-            if self.sgcn_early_stopping and self.sgcn_early_stopping.early_stop:
-                if self.sgcn_early_stopping.restore_best_weights:
-                    self.sgcn_early_stopping.restore_weights(self.sgcn_model)
-                    print(f"Restored SGCN best weights from early stopping")
 
         # Cache models AFTER restoring weights (if early stopping was used) or just cache normally
         if self.cache_run:
