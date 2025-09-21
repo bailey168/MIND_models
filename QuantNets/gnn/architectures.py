@@ -167,8 +167,8 @@ class GATv2ConvNet(torch.nn.Module):
 
         self.conv_layers = [GATv2Conv(
                                     in_channels=embedding_dim,
-                                    out_channels=64,
-                                    heads=2,
+                                    out_channels=32,
+                                    heads=4,
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
@@ -176,9 +176,9 @@ class GATv2ConvNet(torch.nn.Module):
                                     concat=False
                                     )] + \
                            [GATv2Conv(
-                                    in_channels=64,
-                                    out_channels=64,
-                                    heads=2,
+                                    in_channels=32,
+                                    out_channels=32,
+                                    heads=4,
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
@@ -190,14 +190,14 @@ class GATv2ConvNet(torch.nn.Module):
 
         # Add batch normalization and activation layers
         self.batch_norms = torch.nn.ModuleList([
-            pyg_nn.norm.GraphNorm(64) for _ in range(layers_num - 1)
+            pyg_nn.norm.GraphNorm(32) for _ in range(layers_num - 1)
         ])
         self.activations = torch.nn.ModuleList([
             torch.nn.ELU() for _ in range(layers_num - 1)
         ])
 
         # Calculate final feature dimension
-        graph_features_dim = 64
+        graph_features_dim = 32
 
         if self.include_demo:
             self.demo_projection = torch.nn.Linear(self.demo_dim, 16)
