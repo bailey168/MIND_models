@@ -203,7 +203,10 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.Linear(64, 32),
             torch.nn.LeakyReLU(),
             torch.nn.Dropout(0.25),
-            torch.nn.Linear(32, 1)
+            torch.nn.Linear(32, 16),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(0.25),
+            torch.nn.Linear(16, 1)
         )
         self.global_attention_pool = AttentionalAggregation(gate_nn=attention_gate)
 
