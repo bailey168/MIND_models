@@ -202,7 +202,6 @@ class GATv2ConvNet(torch.nn.Module):
         attention_gate = torch.nn.Sequential(
             torch.nn.Linear(64, 32),
             torch.nn.ELU(),
-            torch.nn.Dropout(0.1),
             torch.nn.Linear(32, 1)
         )
         self.global_attention_pool = AttentionalAggregation(gate_nn=attention_gate)
@@ -219,11 +218,11 @@ class GATv2ConvNet(torch.nn.Module):
         self.classifier = torch.nn.Sequential(
             torch.nn.Linear(total_features_dim, 64),
             torch.nn.BatchNorm1d(64),
-            torch.nn.LeakyReLU(),
+            torch.nn.ELU(),
             torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(64, 32),
             torch.nn.BatchNorm1d(32),
-            torch.nn.LeakyReLU(),
+            torch.nn.ELU(),
             torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(32, out_dim)
         )
