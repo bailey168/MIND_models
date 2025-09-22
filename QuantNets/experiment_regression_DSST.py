@@ -550,6 +550,83 @@ class ExperimentRegression:
                         f.write(f"Best model epoch: {getattr(self.sgcn_early_stopping, 'best_epoch', 'unknown')}\n")
                         f.write(f"Monitor metric: {self.early_stopping_config.get('monitor', 'loss')}\n")
 
+    def __cache_results(self, train_qgcn_loss_array, train_sgcn_loss_array, 
+                        train_qgcn_mse_array, train_sgcn_mse_array,
+                        test_qgcn_mse_array, test_sgcn_mse_array,
+                        train_qgcn_r2_array=None, train_sgcn_r2_array=None,
+                        test_qgcn_r2_array=None, test_sgcn_r2_array=None,
+                        learning_rates_qgcn=None, learning_rates_sgcn=None):
+        """Save training results to disk."""
+        if self.qgcn_specific_run_dir != None and self.qgcn_model_exists:
+            train_qgcn_loss_filepath = os.path.join(self.qgcn_specific_run_dir, "train_loss.pk")
+            train_qgcn_mse_filepath = os.path.join(self.qgcn_specific_run_dir, "train_mse.pk")
+            test_qgcn_mse_filepath = os.path.join(self.qgcn_specific_run_dir, "test_mse.pk")
+            with open(train_qgcn_loss_filepath, 'wb') as f:
+                pickle.dump(train_qgcn_loss_array, f)
+            with open(train_qgcn_mse_filepath, 'wb') as f:
+                pickle.dump(train_qgcn_mse_array, f)
+            with open(test_qgcn_mse_filepath, 'wb') as f:
+                pickle.dump(test_qgcn_mse_array, f)
+            
+            # Save R² arrays if provided
+            if train_qgcn_r2_array is not None:
+                train_qgcn_r2_filepath = os.path.join(self.qgcn_specific_run_dir, "train_r2.pk")
+                with open(train_qgcn_r2_filepath, 'wb') as f:
+                    pickle.dump(train_qgcn_r2_array, f)
+            if test_qgcn_r2_array is not None:
+                test_qgcn_r2_filepath = os.path.join(self.qgcn_specific_run_dir, "test_r2.pk")
+                with open(test_qgcn_r2_filepath, 'wb') as f:
+                    pickle.dump(test_qgcn_r2_array, f)
+            
+            if learning_rates_qgcn is not None:
+                lr_qgcn_filepath = os.path.join(self.qgcn_specific_run_dir, "learning_rates.pk")
+                with open(lr_qgcn_filepath, 'wb') as f:
+                    pickle.dump(learning_rates_qgcn, f)
+        
+        if self.sgcn_specific_run_dir != None and self.sgcn_model_exists:
+            train_sgcn_loss_filepath = os.path.join(self.sgcn_specific_run_dir, "train_loss.pk")
+            train_sgcn_mse_filepath = os.path.join(self.sgcn_specific_run_dir, "train_mse.pk")
+            test_sgcn_mse_filepath = os.path.join(self.sgcn_specific_run_dir, "test_mse.pk")
+            with open(train_sgcn_loss_filepath, 'wb') as f:
+                pickle.dump(train_sgcn_loss_array, f)
+            with open(train_sgcn_mse_filepath, 'wb') as f:
+                pickle.dump(train_sgcn_mse_array, f)
+            with open(test_sgcn_mse_filepath, 'wb') as f:
+                pickle.dump(test_sgcn_mse_array, f)
+            
+            # Save R² arrays if provided
+            if train_sgcn_r2_array is not None:
+                train_sgcn_r2_filepath = os.path.join(self.sgcn_specific_run_dir, "train_r2.pk")
+                with open(train_sgcn_r2_filepath, 'wb') as f:
+                    pickle.dump(train_sgcn_r2_array, f)
+            if test_sgcn_r2_array is not None:
+                test_sgcn_r2_filepath = os.path.join(self.sgcn_specific_run_dir, "test_r2.pk")
+                with open(test_sgcn_r2_filepath, 'wb') as f:
+                    pickle.dump(test_sgcn_r2_array, f)
+            
+            if learning_rates_sgcn is not None:
+                lr_sgcn_filepath = os.path.join(self.sgcn_specific_run_dir, "learning_rates.pk")
+                with open(lr_sgcn_filepath, 'wb') as f:
+                    pickle.dump(learning_rates_sgcn, f)
+
+    def __move_graph_data_to_device(self, data):
+        """Move graph data to target device."""
+        if hasattr(data, 'x') and data.x is not None:
+            data.x = data.x.to(self.device)
+        if hasattr(data, 'edge_index') and data.edge_index is not None:
+            data.edge_index = data.edge_index.to(self.device)
+        if hasattr(data, 'y') and data.y is not None:
+            data.y = data.y.to(self.device)
+        if hasattr(data, 'pos') and data.pos is not None:
+            data.pos = data.pos.to(self.device)
+        if hasattr(data, 'batch') and data.batch is not None:
+            data.batch = data.batch.to(self.device)
+        if hasattr(data, 'edge_attr') and data.edge_attr is not None:
+            data.edge_attr = data.edge_attr.to(self.device)
+        if hasattr(data, 'demographics') and data.demographics is not None:
+            data.demographics = data.demographics.to(self.device)
+        return data
+
     def _fit_target_scaler(self):
         """Fit target scaler using training data."""
         print("Fitting target scaler on training data...")
