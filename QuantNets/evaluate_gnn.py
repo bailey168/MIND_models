@@ -52,16 +52,22 @@ class ModelEvaluator:
         try:
             checkpoint = torch.load(model_path, map_location=self.device)
             
+            # Debug: Print what's in the checkpoint
+            print(f"Checkpoint keys: {list(checkpoint.keys()) if isinstance(checkpoint, dict) else 'Not a dict'}")
+            if isinstance(checkpoint, dict) and 'target_scaling' in checkpoint:
+                print(f"Target scaling info found: {checkpoint['target_scaling']}")
+        
             # Extract target scaling info
             target_scaling_info = {
                 'use_target_scaling': False,
                 'target_scaler_mean': 0.0,
                 'target_scaler_std': 1.0
             }
-            
+        
             if isinstance(checkpoint, dict) and 'target_scaling' in checkpoint:
                 target_scaling_info.update(checkpoint['target_scaling'])
-            
+                print(f"Updated target scaling info: {target_scaling_info}")
+        
             # Load model
             if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
                 model_complete_path = os.path.join(model_dir, "model_complete.pth")
