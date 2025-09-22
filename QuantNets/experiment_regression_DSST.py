@@ -51,7 +51,8 @@ class ExperimentRegression:
                 profile_run = False,
                 walk_clock_num_runs = 10,
                 id = None,
-                early_stopping_config = None):
+                early_stopping_config = None,
+                use_target_scaling = True):  # Add target scaling option
         
         # Controls whether we want to print runtime per model
         self.profile_run = profile_run
@@ -254,6 +255,14 @@ class ExperimentRegression:
         else:
             self.qgcn_early_stopping = None
             self.sgcn_early_stopping = None
+
+        # Add target scaling configuration
+        self.use_target_scaling = use_target_scaling
+        self.target_scaler_mean = None
+        self.target_scaler_std = None
+        
+        if self.use_target_scaling:
+            self._fit_target_scaler()
 
         # Print model statistics if profiling
         if self.profile_run: 
@@ -463,6 +472,12 @@ class ExperimentRegression:
                     'model_config': {
                         'model_type': type(self.qgcn_model).__name__,
                         'architecture': str(self.qgcn_model)
+                    },
+                    # Add target scaling information
+                    'target_scaling': {
+                        'use_target_scaling': self.use_target_scaling,
+                        'target_scaler_mean': self.target_scaler_mean,
+                        'target_scaler_std': self.target_scaler_std
                     }
                 }
                 torch.save(qgcn_save_dict, os.path.join(self.qgcn_specific_run_dir, "model.pth"))
@@ -514,6 +529,12 @@ class ExperimentRegression:
                     'model_config': {
                         'model_type': type(self.sgcn_model).__name__,
                         'architecture': str(self.sgcn_model)
+                    },
+                    # Add target scaling information
+                    'target_scaling': {
+                        'use_target_scaling': self.use_target_scaling,
+                        'target_scaler_mean': self.target_scaler_mean,
+                        'target_scaler_std': self.target_scaler_std
                     }
                 }
                 torch.save(sgcn_save_dict, os.path.join(self.sgcn_specific_run_dir, "model.pth"))
@@ -529,82 +550,61 @@ class ExperimentRegression:
                         f.write(f"Best model epoch: {getattr(self.sgcn_early_stopping, 'best_epoch', 'unknown')}\n")
                         f.write(f"Monitor metric: {self.early_stopping_config.get('monitor', 'loss')}\n")
 
-    def __cache_results(self, train_qgcn_loss_array, train_sgcn_loss_array, 
-                        train_qgcn_mse_array, train_sgcn_mse_array,
-                        test_qgcn_mse_array, test_sgcn_mse_array,
-                        train_qgcn_r2_array=None, train_sgcn_r2_array=None,
-                        test_qgcn_r2_array=None, test_sgcn_r2_array=None,
-                        learning_rates_qgcn=None, learning_rates_sgcn=None):
-        """Save training results to disk."""
-        if self.qgcn_specific_run_dir != None and self.qgcn_model_exists:
-            train_qgcn_loss_filepath = os.path.join(self.qgcn_specific_run_dir, "train_loss.pk")
-            train_qgcn_mse_filepath = os.path.join(self.qgcn_specific_run_dir, "train_mse.pk")
-            test_qgcn_mse_filepath = os.path.join(self.qgcn_specific_run_dir, "test_mse.pk")
-            with open(train_qgcn_loss_filepath, 'wb') as f:
-                pickle.dump(train_qgcn_loss_array, f)
-            with open(train_qgcn_mse_filepath, 'wb') as f:
-                pickle.dump(train_qgcn_mse_array, f)
-            with open(test_qgcn_mse_filepath, 'wb') as f:
-                pickle.dump(test_qgcn_mse_array, f)
-            
-            # Save R² arrays if provided
-            if train_qgcn_r2_array is not None:
-                train_qgcn_r2_filepath = os.path.join(self.qgcn_specific_run_dir, "train_r2.pk")
-                with open(train_qgcn_r2_filepath, 'wb') as f:
-                    pickle.dump(train_qgcn_r2_array, f)
-            if test_qgcn_r2_array is not None:
-                test_qgcn_r2_filepath = os.path.join(self.qgcn_specific_run_dir, "test_r2.pk")
-                with open(test_qgcn_r2_filepath, 'wb') as f:
-                    pickle.dump(test_qgcn_r2_array, f)
-            
-            if learning_rates_qgcn is not None:
-                lr_qgcn_filepath = os.path.join(self.qgcn_specific_run_dir, "learning_rates.pk")
-                with open(lr_qgcn_filepath, 'wb') as f:
-                    pickle.dump(learning_rates_qgcn, f)
+    def _fit_target_scaler(self):
+        """Fit target scaler using training data."""
+        print("Fitting target scaler on training data...")
         
-        if self.sgcn_specific_run_dir != None and self.sgcn_model_exists:
-            train_sgcn_loss_filepath = os.path.join(self.sgcn_specific_run_dir, "train_loss.pk")
-            train_sgcn_mse_filepath = os.path.join(self.sgcn_specific_run_dir, "train_mse.pk")
-            test_sgcn_mse_filepath = os.path.join(self.sgcn_specific_run_dir, "test_mse.pk")
-            with open(train_sgcn_loss_filepath, 'wb') as f:
-                pickle.dump(train_sgcn_loss_array, f)
-            with open(train_sgcn_mse_filepath, 'wb') as f:
-                pickle.dump(train_sgcn_mse_array, f)
-            with open(test_sgcn_mse_filepath, 'wb') as f:
-                pickle.dump(test_sgcn_mse_array, f)
-            
-            # Save R² arrays if provided
-            if train_sgcn_r2_array is not None:
-                train_sgcn_r2_filepath = os.path.join(self.sgcn_specific_run_dir, "train_r2.pk")
-                with open(train_sgcn_r2_filepath, 'wb') as f:
-                    pickle.dump(train_sgcn_r2_array, f)
-            if test_sgcn_r2_array is not None:
-                test_sgcn_r2_filepath = os.path.join(self.sgcn_specific_run_dir, "test_r2.pk")
-                with open(test_sgcn_r2_filepath, 'wb') as f:
-                    pickle.dump(test_sgcn_r2_array, f)
-            
-            if learning_rates_sgcn is not None:
-                lr_sgcn_filepath = os.path.join(self.sgcn_specific_run_dir, "learning_rates.pk")
-                with open(lr_sgcn_filepath, 'wb') as f:
-                    pickle.dump(learning_rates_sgcn, f)
-
-    def __move_graph_data_to_device(self, data):
-        """Move graph data to target device."""
-        if hasattr(data, 'x') and data.x is not None:
-            data.x = data.x.to(self.device)
-        if hasattr(data, 'edge_index') and data.edge_index is not None:
-            data.edge_index = data.edge_index.to(self.device)
-        if hasattr(data, 'y') and data.y is not None:
-            data.y = data.y.to(self.device)
-        if hasattr(data, 'pos') and data.pos is not None:
-            data.pos = data.pos.to(self.device)
-        if hasattr(data, 'batch') and data.batch is not None:
-            data.batch = data.batch.to(self.device)
-        if hasattr(data, 'edge_attr') and data.edge_attr is not None:
-            data.edge_attr = data.edge_attr.to(self.device)
-        if hasattr(data, 'demographics') and data.demographics is not None:
-            data.demographics = data.demographics.to(self.device)
-        return data
+        # Collect all training targets
+        train_targets = []
+        
+        # Use SGCN training data (or QGCN if SGCN doesn't exist)
+        if self.sgcn_model_exists:
+            for data in self.data_struct["geometric"]["sgcn_train_data"]:
+                train_targets.append(data.y.item() if data.y.dim() == 0 else data.y.cpu().numpy())
+        elif self.qgcn_model_exists:
+            for data in self.data_struct["geometric"]["qgcn_train_data"]:
+                train_targets.append(data.y.item() if data.y.dim() == 0 else data.y.cpu().numpy())
+        
+        train_targets = np.array(train_targets)
+        
+        # Calculate mean and std
+        self.target_scaler_mean = np.mean(train_targets)
+        self.target_scaler_std = np.std(train_targets)
+        
+        print(f"Target scaling - Mean: {self.target_scaler_mean:.4f}, Std: {self.target_scaler_std:.4f}")
+        
+        # Apply scaling to all datasets
+        self._apply_target_scaling()
+    
+    def _apply_target_scaling(self):
+        """Apply target scaling to all datasets."""
+        print("Applying target scaling to datasets...")
+        
+        # Scale SGCN datasets
+        if self.sgcn_model_exists:
+            for data in self.data_struct["geometric"]["sgcn_train_data"]:
+                data.y = (data.y - self.target_scaler_mean) / self.target_scaler_std
+            for data in self.data_struct["geometric"]["sgcn_test_data"]:
+                data.y = (data.y - self.target_scaler_mean) / self.target_scaler_std
+        
+        # Scale QGCN datasets
+        if self.qgcn_model_exists:
+            for data in self.data_struct["geometric"]["qgcn_train_data"]:
+                data.y = (data.y - self.target_scaler_mean) / self.target_scaler_std
+            for data in self.data_struct["geometric"]["qgcn_test_data"]:
+                data.y = (data.y - self.target_scaler_mean) / self.target_scaler_std
+    
+    def _inverse_transform_targets(self, scaled_targets):
+        """Convert scaled targets back to original scale."""
+        if self.use_target_scaling:
+            return scaled_targets * self.target_scaler_std + self.target_scaler_mean
+        return scaled_targets
+    
+    def _transform_targets(self, original_targets):
+        """Convert original targets to scaled targets."""
+        if self.use_target_scaling:
+            return (original_targets - self.target_scaler_mean) / self.target_scaler_std
+        return original_targets
 
     def __train(self, train_qgcn=True, train_sgcn=True):
         """Train models for one epoch with selective training."""
@@ -708,70 +708,74 @@ class ExperimentRegression:
                 print(f"✓ Saved QGCN model from epoch {current_epoch}")
 
     def __evaluate(self, eval_train_data=False):
-        """Evaluate models on train or test data and return both MSE and R²."""
+        """Evaluate models on train or test data and return both MSE and R² in original scale."""
         # For QGCN evaluation
         qgcn_mse, qgcn_r2 = 0, 0
         if self.qgcn_model_exists:
             sp_qgcn_dataset_loader = self.sp_qgcn_train_dataloader if eval_train_data else self.sp_qgcn_test_dataloader
             self.qgcn_model.eval()
-            if self.profile_run: start_time = time.time()
+            
             total_mse, total_samples = 0, 0
             all_predictions, all_targets = [], []
+            
             with torch.no_grad():
                 for data in sp_qgcn_dataset_loader:
-                    qgcn_data = self.__move_graph_data_to_device(data)
-                    pred = self.qgcn_model(qgcn_data)
-                    mse = F.mse_loss(pred, qgcn_data.y.float(), reduction='sum')
-                    total_mse += mse.item()
-                    total_samples += qgcn_data.num_graphs
+                    data = self.__move_graph_data_to_device(data)
+                    predictions = self.qgcn_model(data)
                     
-                    # Collect predictions and targets for R² calculation
-                    all_predictions.extend(pred.cpu().numpy().flatten())
-                    all_targets.extend(qgcn_data.y.float().cpu().numpy().flatten())
+                    # Convert predictions and targets back to original scale
+                    predictions_orig = self._inverse_transform_targets(predictions.cpu().numpy())
+                    targets_orig = self._inverse_transform_targets(data.y.cpu().numpy())
+                    
+                    # Calculate MSE in original scale
+                    mse = np.mean((predictions_orig - targets_orig) ** 2)
+                    total_mse += mse * len(predictions_orig)
+                    total_samples += len(predictions_orig)
+                    
+                    all_predictions.extend(predictions_orig)
+                    all_targets.extend(targets_orig)
             
             qgcn_mse = total_mse / total_samples
-            # Calculate R² score
-            if len(all_predictions) > 1:  # Need at least 2 samples for R²
+            
+            # Calculate R² score in original scale
+            if len(all_predictions) > 1:
                 qgcn_r2 = r2_score(all_targets, all_predictions)
             else:
-                qgcn_r2 = 0.0
-            
-            if self.profile_run: 
-                stop_time = time.time()
-                profile_stats = f"; Epoch took a total of {stop_time - start_time}s"
-                print(f"{'train' if eval_train_data else 'test'} data: qgcn eval done{profile_stats}")
+                qgcn_r2 = 0
 
         # For SGCN evaluation
         sgcn_mse, sgcn_r2 = 0, 0
         if self.sgcn_model_exists:
             sp_sgcn_dataset_loader = self.sp_sgcn_train_dataloader if eval_train_data else self.sp_sgcn_test_dataloader
             self.sgcn_model.eval()
-            if self.profile_run: start_time = time.time()
+            
             total_mse, total_samples = 0, 0
             all_predictions, all_targets = [], []
+            
             with torch.no_grad():
                 for data in sp_sgcn_dataset_loader:
-                    sgcn_data = self.__move_graph_data_to_device(data)
-                    pred = self.sgcn_model(sgcn_data)
-                    mse = F.mse_loss(pred, sgcn_data.y.float(), reduction='sum')
-                    total_mse += mse.item()
-                    total_samples += sgcn_data.num_graphs
+                    data = self.__move_graph_data_to_device(data)
+                    predictions = self.sgcn_model(data)
                     
-                    # Collect predictions and targets for R² calculation
-                    all_predictions.extend(pred.cpu().numpy().flatten())
-                    all_targets.extend(sgcn_data.y.float().cpu().numpy().flatten())
+                    # Convert predictions and targets back to original scale
+                    predictions_orig = self._inverse_transform_targets(predictions.cpu().numpy())
+                    targets_orig = self._inverse_transform_targets(data.y.cpu().numpy())
+                    
+                    # Calculate MSE in original scale
+                    mse = np.mean((predictions_orig - targets_orig) ** 2)
+                    total_mse += mse * len(predictions_orig)
+                    total_samples += len(predictions_orig)
+                    
+                    all_predictions.extend(predictions_orig)
+                    all_targets.extend(targets_orig)
             
             sgcn_mse = total_mse / total_samples
-            # Calculate R² score
-            if len(all_predictions) > 1:  # Need at least 2 samples for R²
+            
+            # Calculate R² score in original scale
+            if len(all_predictions) > 1:
                 sgcn_r2 = r2_score(all_targets, all_predictions)
             else:
-                sgcn_r2 = 0.0
-            
-            if self.profile_run: 
-                stop_time = time.time()
-                profile_stats = f"; Epoch took a total of {stop_time - start_time}s"
-                print(f"{'train' if eval_train_data else 'test'} data: sgcn eval done{profile_stats}")
+                sgcn_r2 = 0
 
         return qgcn_mse, sgcn_mse, qgcn_r2, sgcn_r2
 

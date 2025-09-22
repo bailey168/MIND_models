@@ -19,23 +19,23 @@ from torch_geometric.loader import DataLoader as GraphDataLoader
 
 class ModelEvaluator:
     def __init__(self, model_path, dataset_config, base_path="."):
-        """
-        Initialize the model evaluator.
-        
-        Args:
-            model_path: Path to the saved model (.pth file)
-            dataset_config: Dataset configuration dict
-            base_path: Base path for data files
-        """
+        """Initialize the model evaluator with target scaling support."""
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.base_path = base_path
         self.dataset_config = dataset_config
         
-        # Load the model using the robust loading method
-        self.model = self._load_model_robust(model_path)
+        # Load the model and target scaling information
+        self.model, self.target_scaling_info = self._load_model_with_scaling(model_path)
         self.model.eval()
+        
         print(f"Model loaded from {model_path}")
         print(f"Using device: {self.device}")
+        
+        if self.target_scaling_info['use_target_scaling']:
+            print(f"Target scaling enabled - Mean: {self.target_scaling_info['target_scaler_mean']:.4f}, "
+                  f"Std: {self.target_scaling_info['target_scaler_std']:.4f}")
+        else:
+            print("Target scaling disabled")
         
         # Load dataset
         self.data_struct = read_cached_graph_dataset(
@@ -45,63 +45,59 @@ class ModelEvaluator:
             parent_dir=base_path
         )
     
-    def _load_model_robust(self, model_path):
-        """
-        Robustly load a model, trying multiple approaches and show epoch info.
-        """
+    def _load_model_with_scaling(self, model_path):
+        """Load model and extract target scaling information."""
         model_dir = os.path.dirname(model_path)
         
-        # Check for training info file
-        training_info_path = os.path.join(model_dir, "training_info.txt")
-        if os.path.exists(training_info_path):
-            print("Training information found:")
-            with open(training_info_path, 'r') as f:
-                print(f.read())
-    
-        # Try to load model.pth first (this should contain the best model after fixes)
         try:
-            print(f"Loading best model from: {model_path}")
             checkpoint = torch.load(model_path, map_location=self.device)
             
-            if isinstance(checkpoint, dict):
-                if 'model_state_dict' in checkpoint:
-                    # Load the model architecture first
-                    model_complete_path = os.path.join(model_dir, "model_complete.pth")
-                    if os.path.exists(model_complete_path):
-                        print(f"Loading complete model from: {model_complete_path}")
-                        model = torch.load(model_complete_path, map_location=self.device)
-                        # Load the best weights
-                        model.load_state_dict(checkpoint['model_state_dict'])
-                        
-                        # Show which epoch was loaded
-                        best_epoch = checkpoint.get('best_epoch', checkpoint.get('final_epoch', 'unknown'))
-                        is_best = checkpoint.get('is_best_model', False)
-                        print(f"Loaded model from epoch: {best_epoch}")
-                        if is_best:
-                            print("✓ This is the best performing model")
-                        
-                        return model.to(self.device)
-                    else:
-                        raise FileNotFoundError("Complete model file not found")
-                else:
-                    # Old format - direct model
-                    return checkpoint.to(self.device)
-            else:
-                # Direct model object
-                return checkpoint.to(self.device)
-                
-        except Exception as e:
-            print(f"Failed to load from {model_path}: {e}")
+            # Extract target scaling info
+            target_scaling_info = {
+                'use_target_scaling': False,
+                'target_scaler_mean': 0.0,
+                'target_scaler_std': 1.0
+            }
             
-            # Fallback to complete model
+            if isinstance(checkpoint, dict) and 'target_scaling' in checkpoint:
+                target_scaling_info.update(checkpoint['target_scaling'])
+            
+            # Load model
+            if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+                model_complete_path = os.path.join(model_dir, "model_complete.pth")
+                if os.path.exists(model_complete_path):
+                    model = torch.load(model_complete_path, map_location=self.device)
+                    model.load_state_dict(checkpoint['model_state_dict'])
+                    return model.to(self.device), target_scaling_info
+            
+            # Fallback methods
             model_complete_path = os.path.join(model_dir, "model_complete.pth")
             if os.path.exists(model_complete_path):
-                print(f"Falling back to complete model: {model_complete_path}")
                 model = torch.load(model_complete_path, map_location=self.device)
-                return model.to(self.device)
-            else:
-                raise Exception(f"Could not load model from {model_path} or {model_complete_path}")
-
+                return model.to(self.device), target_scaling_info
+            
+            raise Exception(f"Could not load model from {model_path}")
+            
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            raise
+    
+    def _inverse_transform_targets(self, scaled_targets):
+        """Convert scaled targets back to original scale."""
+        if self.target_scaling_info['use_target_scaling']:
+            mean = self.target_scaling_info['target_scaler_mean']
+            std = self.target_scaling_info['target_scaler_std']
+            return scaled_targets * std + mean
+        return scaled_targets
+    
+    def _transform_targets(self, original_targets):
+        """Convert original targets to scaled targets."""
+        if self.target_scaling_info['use_target_scaling']:
+            mean = self.target_scaling_info['target_scaler_mean']
+            std = self.target_scaling_info['target_scaler_std']
+            return (original_targets - mean) / std
+        return original_targets
+    
     def _move_data_to_device(self, data):
         """Move graph data to target device."""
         if hasattr(data, 'x') and data.x is not None:
@@ -121,16 +117,7 @@ class ModelEvaluator:
         return data
     
     def evaluate_dataset(self, dataset_type='test', batch_size=64):
-        """
-        Evaluate the model on train or test dataset.
-        
-        Args:
-            dataset_type: 'train' or 'test'
-            batch_size: Batch size for evaluation
-            
-        Returns:
-            Dictionary with evaluation metrics
-        """
+        """Evaluate the model on train or test dataset with proper target scaling."""
         # Select the appropriate dataset
         if dataset_type == 'train':
             dataset = self.data_struct["geometric"]["sgcn_train_data"]
@@ -142,9 +129,9 @@ class ModelEvaluator:
         # Create data loader
         data_loader = GraphDataLoader(dataset, batch_size=batch_size, shuffle=False)
         
-        # Collect predictions and true values
-        all_predictions = []
-        all_true_values = []
+        # Collect predictions and true values (in original scale)
+        all_predictions_orig = []
+        all_true_values_orig = []
         
         print(f"Evaluating on {dataset_type} dataset...")
         
@@ -152,34 +139,36 @@ class ModelEvaluator:
             for batch_idx, data in enumerate(data_loader):
                 data = self._move_data_to_device(data)
                 
-                # Get predictions
-                predictions = self.model(data)
+                # Get predictions (in scaled space)
+                predictions_scaled = self.model(data)
                 
-                # Handle different output formats
-                if isinstance(predictions, torch.Tensor):
-                    if predictions.dim() == 0:  # Scalar output
-                        predictions = predictions.unsqueeze(0)
-                    elif predictions.dim() == 2 and predictions.size(1) == 1:  # (batch_size, 1)
-                        predictions = predictions.squeeze(-1)
+                # Convert to numpy
+                if isinstance(predictions_scaled, torch.Tensor):
+                    if predictions_scaled.dim() == 0:
+                        predictions_scaled = predictions_scaled.unsqueeze(0)
+                    elif predictions_scaled.dim() == 2 and predictions_scaled.size(1) == 1:
+                        predictions_scaled = predictions_scaled.squeeze(-1)
                 
-                # Collect predictions and true values
-                all_predictions.append(predictions.cpu().numpy())
-                all_true_values.append(data.y.cpu().numpy())
+                predictions_scaled_np = predictions_scaled.cpu().numpy()
+                targets_scaled_np = data.y.cpu().numpy()
                 
-                # if (batch_idx + 1) % 10 == 0:
-                #     print(f"Processed {batch_idx + 1}/{len(data_loader)} batches")
+                # Convert back to original scale
+                predictions_orig = self._inverse_transform_targets(predictions_scaled_np)
+                targets_orig = self._inverse_transform_targets(targets_scaled_np)
+                
+                # Collect results in original scale
+                all_predictions_orig.append(predictions_orig)
+                all_true_values_orig.append(targets_orig)
         
         # Concatenate all results
-        predictions = np.concatenate(all_predictions)
-        true_values = np.concatenate(all_true_values)
+        predictions = np.concatenate(all_predictions_orig)
+        true_values = np.concatenate(all_true_values_orig)
         
-        # Calculate metrics
+        # Calculate metrics in original scale
         r2 = r2_score(true_values, predictions)
         mse = mean_squared_error(true_values, predictions)
         rmse = np.sqrt(mse)
         mae = mean_absolute_error(true_values, predictions)
-        
-        # Calculate additional metrics
         correlation = np.corrcoef(true_values, predictions)[0, 1]
         
         results = {
@@ -191,7 +180,8 @@ class ModelEvaluator:
             'mae': mae,
             'correlation': correlation,
             'predictions': predictions,
-            'true_values': true_values
+            'true_values': true_values,
+            'target_scaling_used': self.target_scaling_info['use_target_scaling']
         }
         
         return results

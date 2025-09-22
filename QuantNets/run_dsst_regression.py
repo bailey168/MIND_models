@@ -106,7 +106,7 @@ def generate_grid_search_configs(run_config, splits_config, datasets_config):
     
     return configs
 
-def run_single_experiment(config, model_type, run_evaluation=True):
+def run_single_experiment(config, model_type, run_evaluation=True, use_target_scaling=True):
     """Run a single experiment with given configuration."""
     
     config_idx = config['config_idx']
@@ -145,9 +145,9 @@ def run_single_experiment(config, model_type, run_evaluation=True):
     early_stop_suffix = "_ES" if early_stopping_config and early_stopping_config.get('enabled', False) else ""
     experiment_id = f"{TARGET}_regression_{model_type}_grid_{config_idx + 1}_lr_{run_settings}_epochs_{epochs}_drop_{dropout_rate}_wd_{weight_decay}_layers_{layers_num}_scheduler_{scheduler_config.get('scheduler', 'none')}{early_stop_suffix}"
     
-    # Setup experiment
+    # Setup experiment with target scaling
     experiment = ExperimentRegression(
-        sgcn_model=model,  # Using sgcn_model parameter for both model types
+        sgcn_model=model,
         qgcn_model=None,
         cnn_model=None,
         optim_params=optim_params,
@@ -161,7 +161,8 @@ def run_single_experiment(config, model_type, run_evaluation=True):
         test_shuffle_data=False,
         profile_run=False,
         id=experiment_id,
-        early_stopping_config=early_stopping_config
+        early_stopping_config=early_stopping_config,
+        use_target_scaling=use_target_scaling  # Add this parameter
     )
     
     # Run experiment with evaluation
@@ -244,7 +245,7 @@ def run_single_experiment(config, model_type, run_evaluation=True):
     
     return results
 
-def run_grid_search(model_type, run_evaluation=True):
+def run_grid_search(model_type, run_evaluation=True, use_target_scaling=True):
     """Run grid search experiments for all parameter combinations."""
     
     # Load configurations
@@ -276,7 +277,7 @@ def run_grid_search(model_type, run_evaluation=True):
     # Run all experiments
     for config in configs:
         try:
-            results = run_single_experiment(config, model_type, run_evaluation)
+            results = run_single_experiment(config, model_type, run_evaluation, use_target_scaling)
             
             # Calculate best test MSE for summary
             best_test_mse = min(results['test_sgcn_mse']) if results['test_sgcn_mse'] else float('inf')
@@ -372,10 +373,13 @@ if __name__ == "__main__":
                       help="List all available grid search configurations and exit")
     parser.add_argument("--no-eval", action="store_true", 
                       help="Skip post-training evaluation")
+    parser.add_argument("--no-target-scaling", action="store_true", 
+                      help="Disable target scaling")
     
     args = parser.parse_args()
     
-    run_evaluation = not args.no_eval  # Invert the flag
+    run_evaluation = not args.no_eval
+    use_target_scaling = not args.no_target_scaling
     
     if args.list_configs:
         # Load configurations to show available grid search options
