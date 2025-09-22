@@ -336,7 +336,7 @@ def run_grid_search(model_type, run_evaluation=True, use_target_scaling=True):
     print(f"\nGrid Search for {TARGET} regression with {model_type} completed!")
     return all_results
 
-def run_specific_grid_configs(config_indices, model_type, run_evaluation=True):
+def run_specific_grid_configs(config_indices, model_type, run_evaluation=True, use_target_scaling=True):  # Add this parameter
     """Run specific grid search configurations by their indices (0-based)."""
     
     # Load configurations
@@ -355,7 +355,7 @@ def run_specific_grid_configs(config_indices, model_type, run_evaluation=True):
             continue
             
         try:
-            result = run_single_experiment(configs[i], model_type, run_evaluation)
+            result = run_single_experiment(configs[i], model_type, run_evaluation, use_target_scaling)  # Add this parameter
             results.append(result)
         except Exception as e:
             print(f"Error in grid search experiment {i + 1}: {str(e)}")
@@ -400,7 +400,7 @@ if __name__ == "__main__":
         # Run specific configurations
         print(f"Running specific grid search configurations: {args.config} with {args.model} model")
         print(f"Post-training evaluation: {'Enabled' if run_evaluation else 'Disabled'}")
-        run_specific_grid_configs(args.config, args.model, run_evaluation)
+        run_specific_grid_configs(args.config, args.model, run_evaluation, use_target_scaling)  # Add this parameter
     else:
         # Run all grid search configurations
-        run_grid_search(args.model, run_evaluation)
+        run_grid_search(args.model, run_evaluation, use_target_scaling)  # Add this parameter
