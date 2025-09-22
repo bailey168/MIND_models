@@ -43,7 +43,7 @@ early_stopping:
       monitor: "r2"
   gf_custom:
     - enabled: true
-      patience: 25
+      patience: 30
       min_delta: 0.0001
       restore_best_weights: true
       verbose: true
