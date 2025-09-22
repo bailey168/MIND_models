@@ -23,7 +23,7 @@ epochs:
   dsst_custom:
     - 500
   gf_custom:
-    - 3
+    - 200
 
 # Number of runs for statistical significance
 runs:
@@ -43,7 +43,7 @@ early_stopping:
       monitor: "r2"
   gf_custom:
     - enabled: true
-      patience: 25
+      patience: 30
       min_delta: 0.0001
       restore_best_weights: true
       verbose: true
