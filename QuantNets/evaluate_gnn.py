@@ -154,14 +154,27 @@ class ModelEvaluator:
                         predictions_scaled = predictions_scaled.unsqueeze(0)
                     elif predictions_scaled.dim() == 2 and predictions_scaled.size(1) == 1:
                         predictions_scaled = predictions_scaled.squeeze(-1)
-                
+        
                 predictions_scaled_np = predictions_scaled.cpu().numpy()
-                targets_scaled_np = data.y.cpu().numpy()
+                targets_np = data.y.cpu().numpy()  # These are in ORIGINAL scale!
                 
-                # Convert back to original scale
+                # Debug prints for first batch
+                if batch_idx == 0:
+                    print(f"First batch debug:")
+                    print(f"  Predictions (scaled): mean={predictions_scaled_np.mean():.4f}, std={predictions_scaled_np.std():.4f}")
+                    print(f"  Targets (original): mean={targets_np.mean():.4f}, std={targets_np.std():.4f}")
+            
+                # Convert predictions back to original scale
                 predictions_orig = self._inverse_transform_targets(predictions_scaled_np)
-                targets_orig = self._inverse_transform_targets(targets_scaled_np)
                 
+                # Targets are already in original scale - no transformation needed!
+                targets_orig = targets_np
+                
+                # Debug prints for first batch  
+                if batch_idx == 0:
+                    print(f"  Predictions (original): mean={predictions_orig.mean():.4f}, std={predictions_orig.std():.4f}")
+                    print(f"  Targets (original - no transform): mean={targets_orig.mean():.4f}, std={targets_orig.std():.4f}")
+            
                 # Collect results in original scale
                 all_predictions_orig.append(predictions_orig)
                 all_true_values_orig.append(targets_orig)

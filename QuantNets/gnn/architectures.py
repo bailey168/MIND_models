@@ -197,8 +197,7 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.ELU() for _ in range(layers_num - 1)
         ])
 
-        # Use AttentionalAggregation instead of GlobalAttention
-        # Gate network for attention weights
+        # Use AttentionalAggregation for attention-based pooling
         attention_gate = torch.nn.Sequential(
             torch.nn.Linear(64, 32),
             torch.nn.ELU(),
@@ -207,8 +206,8 @@ class GATv2ConvNet(torch.nn.Module):
         )
         self.global_attention_pool = AttentionalAggregation(gate_nn=attention_gate)
 
-        # Calculate final feature dimension
-        graph_features_dim = 64
+        # Calculate final feature dimension - now 64*2 = 128 (attention + mean pooling)
+        graph_features_dim = 64 * 2
 
         if self.include_demo:
             self.demo_projection = torch.nn.Linear(self.demo_dim, 16)
@@ -219,11 +218,11 @@ class GATv2ConvNet(torch.nn.Module):
         self.classifier = torch.nn.Sequential(
             torch.nn.Linear(total_features_dim, 64),
             torch.nn.BatchNorm1d(64),
-            torch.nn.LeakyReLU(),
+            torch.nn.ELU(),
             torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(64, 32),
             torch.nn.BatchNorm1d(32),
-            torch.nn.LeakyReLU(),
+            torch.nn.ELU(),
             torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(32, out_dim)
         )
@@ -239,8 +238,10 @@ class GATv2ConvNet(torch.nn.Module):
                 data.x = self.batch_norms[i](data.x)
                 data.x = self.activations[i](data.x)
 
-        # Use attentional aggregation instead of global attention pooling
-        graph_features = self.global_attention_pool(data.x, data.batch)
+        # Concatenate both global attention pool and global mean pool
+        attention_features = self.global_attention_pool(data.x, data.batch)
+        mean_features = global_mean_pool(data.x, data.batch)
+        graph_features = torch.cat([attention_features, mean_features], dim=1)
 
         # Process demographic features through linear layer and concatenate
         if self.include_demo and hasattr(data, 'demographics'):
