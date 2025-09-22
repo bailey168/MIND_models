@@ -219,11 +219,11 @@ class GATv2ConvNet(torch.nn.Module):
         self.classifier = torch.nn.Sequential(
             torch.nn.Linear(total_features_dim, 64),
             torch.nn.BatchNorm1d(64),
-            torch.nn.ELU(),
+            torch.nn.LeakyReLU(),
             torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(64, 32),
             torch.nn.BatchNorm1d(32),
-            torch.nn.ELU(),
+            torch.nn.LeakyReLU(),
             torch.nn.Dropout(self.dropout_rate),
             torch.nn.Linear(32, out_dim)
         )
