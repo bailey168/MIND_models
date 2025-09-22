@@ -1,34 +1,24 @@
 # tailored regression experiment class
-import shutil
 import os
 import sys
 import torch
-import pickle
 import torch.nn.functional as F
-import torch
-import torch_geometric
 import time
-import statistics
-import matplotlib
-from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader as RawDataLoader
 from torch_geometric.loader import DataLoader as GraphDataLoader
-from sklearn.metrics import r2_score
-from util.schedulers import get_cosine_schedule_with_warmup
 
-from util.data_processing import *
+from util.data_processing import read_cached_graph_dataset
 from util.early_stopping import EarlyStopping
 from util.reproducibility import set_deterministic_training
+from util.schedulers import get_cosine_schedule_with_warmup
 
-# define a wrapper time_it decorator function
-def time_it(func):
-    def wrapper_function(*args, **kwargs):
-        start = time.time()
-        res = func(*args, **kwargs)
-        stop = time.time()
-        print(f'Function {func.__name__} took: {stop-start}s')
-        return res
-    return wrapper_function
+# Import from our new utilities file
+from util.experiment_util import (
+    time_it, create_experiment_folder_structure, copy_architecture_files,
+    move_graph_data_to_device, profile_model_complexity, evaluate_model_performance,
+    save_model_with_metadata, save_training_info, cache_training_results,
+    plot_training_history, TargetScaler
+)
 
 
 class ExperimentRegression:
@@ -52,7 +42,7 @@ class ExperimentRegression:
                 walk_clock_num_runs = 10,
                 id = None,
                 early_stopping_config = None,
-                use_target_scaling = True):  # Add target scaling option
+                use_target_scaling = True):
         
         # Controls whether we want to print runtime per model
         self.profile_run = profile_run
@@ -149,24 +139,8 @@ class ExperimentRegression:
         torch.backends.cudnn.deterministic = True
         print(f'Using device: {self.device}')
 
-        # Define the experiments folder and add the directory for this run
-        self.cache_run = True
-        self.specific_run_dir = None
-        self.cnn_specific_run_dir = None
-        self.qgcn_specific_run_dir = None
-        self.sgcn_specific_run_dir = None
-        
-        if base_path == None:
-            self.cache_run = False
-        else:
-            local_experiment_id = ExperimentRegression.experiment_id
-            if id == None:
-                ExperimentRegression.experiment_id += 1
-            else:
-                local_experiment_id = id
-            self.local_experiment_id = local_experiment_id
-            # Create the folder structure for this run
-            self.__create_experiment_folder_structure(base_path, local_experiment_id)
+        # Setup experiment directories using utility function
+        self._setup_experiment_directories(base_path, id)
 
         # Save the models
         self.cnn_model = cnn_model  # Will be None for our data
@@ -187,7 +161,47 @@ class ExperimentRegression:
         if self.sgcn_model_exists:
             self.sgcn_model.to(self.device)
 
-        # Define the optimizers for the different models
+        # Setup optimizers and schedulers
+        self._setup_optimizers_and_schedulers(optim_params)
+
+        # Setup early stopping
+        self._setup_early_stopping(early_stopping_config)
+
+        # Setup target scaling using utility class
+        self.target_scaler = TargetScaler(use_target_scaling)
+        if use_target_scaling:
+            self.target_scaler.fit_and_apply(self.data_struct, self.sgcn_model_exists, self.qgcn_model_exists)
+
+        # Print model statistics if profiling
+        if self.profile_run: 
+            self._print_models_stats()
+
+    def _setup_experiment_directories(self, base_path, id):
+        """Setup experiment directories using utility functions."""
+        self.cache_run = True
+        self.specific_run_dir = None
+        self.cnn_specific_run_dir = None
+        self.qgcn_specific_run_dir = None
+        self.sgcn_specific_run_dir = None
+        
+        if base_path == None:
+            self.cache_run = False
+        else:
+            local_experiment_id = ExperimentRegression.experiment_id
+            if id == None:
+                ExperimentRegression.experiment_id += 1
+            else:
+                local_experiment_id = id
+            self.local_experiment_id = local_experiment_id
+            
+            # Use utility function to create folder structure
+            self.specific_run_dir, self.qgcn_specific_run_dir, self.sgcn_specific_run_dir = create_experiment_folder_structure(base_path, local_experiment_id)
+            
+            # Copy architecture files using utility function
+            copy_architecture_files(base_path, self.qgcn_specific_run_dir, self.sgcn_specific_run_dir)
+
+    def _setup_optimizers_and_schedulers(self, optim_params):
+        """Setup optimizers and schedulers."""
         self.optim_params = optim_params
         learning_rate = 0.001  # Default learning rate for brain connectivity regression
         weight_decay = 0.001   # Default weight decay
@@ -225,7 +239,8 @@ class ExperimentRegression:
         if self.sgcn_model_exists:
             self.sgcn_model_scheduler = self._create_scheduler(self.sgcn_model_optimizer, scheduler_type, scheduler_params)
 
-        # Add early stopping configuration with R² support
+    def _setup_early_stopping(self, early_stopping_config):
+        """Setup early stopping configuration."""
         self.early_stopping_config = early_stopping_config or {}
         self.use_early_stopping = self.early_stopping_config.get('enabled', False)
         
@@ -256,17 +271,29 @@ class ExperimentRegression:
             self.qgcn_early_stopping = None
             self.sgcn_early_stopping = None
 
-        # Add target scaling configuration
-        self.use_target_scaling = use_target_scaling
-        self.target_scaler_mean = None
-        self.target_scaler_std = None
-        
-        if self.use_target_scaling:
-            self._fit_target_scaler()
+    def _print_models_stats(self):
+        """Print model statistics for brain connectivity models using utility function."""
+        if self.sgcn_model_exists:
+            # Pick the largest data (by node degree) to profile all the models
+            crit_lst = [data.x.numel() + data.edge_index.numel() for data in self.data_struct["geometric"]["sgcn_train_data"]]
+            _, max_crit_index = max(crit_lst), crit_lst.index(max(crit_lst))
+            data_sample = self.data_struct["geometric"]["sgcn_train_data"][max_crit_index].clone().detach().to(self.device)
+            
+            profile_model_complexity(
+                self.sgcn_model, data_sample, "SGCN", 
+                self.device, self.walk_clock_num_runs
+            )
 
-        # Print model statistics if profiling
-        if self.profile_run: 
-            self.__print_models_stats()
+        if self.qgcn_model_exists:
+            # Similar profiling for QGCN
+            crit_lst = [data.x.numel() + data.edge_index.numel() for data in self.data_struct["geometric"]["qgcn_train_data"]]
+            _, max_crit_index = max(crit_lst), crit_lst.index(max(crit_lst))
+            data_sample = self.data_struct["geometric"]["qgcn_train_data"][max_crit_index].clone().detach().to(self.device)
+            
+            profile_model_complexity(
+                self.qgcn_model, data_sample, "QGCN", 
+                self.device, self.walk_clock_num_runs
+            )
 
     def _create_scheduler(self, optimizer, scheduler_type, scheduler_params):
         """Create learning rate scheduler based on configuration."""
@@ -318,371 +345,6 @@ class ExperimentRegression:
         else:
             return None
 
-    def __print_models_stats(self):
-        """Print model statistics for brain connectivity models."""
-        try:
-            from flops_counter.ptflops import get_model_complexity_info
-        except ImportError:
-            print("ptflops not available for model profiling")
-            return
-
-        if self.sgcn_model_exists:
-            # Pick the largest data (by node degree) to profile all the models
-            crit_lst = [data.x.numel() + data.edge_index.numel() for data in self.data_struct["geometric"]["sgcn_train_data"]]
-            _, max_crit_index = max(crit_lst), crit_lst.index(max(crit_lst))
-            data_sample = self.data_struct["geometric"]["sgcn_train_data"][max_crit_index].clone().detach().to(self.device)
-            model = self.sgcn_model
-            model.eval()
-            
-            try:
-                macs, params = get_model_complexity_info(model, data_sample, as_strings=False, print_per_layer_stat=False, verbose=False)
-                flops, macs, params = round(2*macs / 1e3, 3), round(macs / 1e3, 3), round(params / 1e3, 3)
-                
-                # Profile Inference Wall Time
-                wall_times = []
-                for _ in range(self.walk_clock_num_runs):
-                    start_time = time.time()
-                    _ = model(self.data_struct["geometric"]["sgcn_train_data"][max_crit_index].clone().detach().to(self.device))
-                    end_time = time.time()
-                    wall_times.append(end_time - start_time)
-                wall_time_mean = statistics.mean(wall_times)
-                wall_time_std = statistics.stdev(wall_times)
-                
-                print("\n-----------------")
-                print("SGCN Model Stats (Brain Connectivity):")
-                print(f"Profiling data sample: {self.data_struct['geometric']['sgcn_train_data'][max_crit_index]}")
-                print("-------------------------------------------------------------------------------------------")
-                print(f'Number of parameters: {params} k')
-                print(f'Theoretical Computational Complexity (FLOPs): {flops} kFLOPs')
-                print(f'Theoretical Computational Complexity (MACs):  {macs} kMACs')
-                print(f'Wall Clock  Computational Complexity (s):     {wall_time_mean} +/- {wall_time_std} s ')
-                print("-------------------------------------------------------------------------------------------")
-            except Exception as e:
-                print(f"Error profiling SGCN model: {e}")
-
-        if self.qgcn_model_exists:
-            # Similar profiling for QGCN
-            crit_lst = [data.x.numel() + data.edge_index.numel() for data in self.data_struct["geometric"]["qgcn_train_data"]]
-            _, max_crit_index = max(crit_lst), crit_lst.index(max(crit_lst))
-            data_sample = self.data_struct["geometric"]["qgcn_train_data"][max_crit_index].clone().detach().to(self.device)
-            model = self.qgcn_model
-            model.eval()
-            
-            try:
-                macs, params = get_model_complexity_info(model, data_sample, as_strings=False, print_per_layer_stat=False, verbose=False)
-                flops, macs, params = round(2*macs / 1e3, 3), round(macs / 1e3, 3), round(params / 1e3, 3)
-                
-                # Profile Inference Wall Time
-                wall_times = []
-                for _ in range(self.walk_clock_num_runs):
-                    start_time = time.time()
-                    _ = model(self.data_struct["geometric"]["qgcn_train_data"][max_crit_index].clone().detach().to(self.device))
-                    end_time = time.time()
-                    wall_times.append(end_time - start_time)
-                wall_time_mean = statistics.mean(wall_times)
-                wall_time_std = statistics.stdev(wall_times)
-                
-                print("\n-----------------")
-                print("QGCN Model Stats (Brain Connectivity):")
-                print(f"Profiling data sample: {self.data_struct['geometric']['qgcn_train_data'][max_crit_index]}")
-                print("-------------------------------------------------------------------------------------------")
-                print(f'Number of parameters: {params} k')
-                print(f'Theoretical Computational Complexity (FLOPs): {flops} kFLOPs')
-                print(f'Theoretical Computational Complexity (MACs):  {macs} kMACs')
-                print(f'Wall Clock  Computational Complexity (s):     {wall_time_mean} +/- {wall_time_std} s ')
-                print("-------------------------------------------------------------------------------------------")
-            except Exception as e:
-                print(f"Error profiling QGCN model: {e}")
-
-    def __create_experiment_folder_structure(self, base_path, experiment_id):
-        """Create folder structure for experiment results."""
-        if not os.path.exists(base_path):
-            print("Ensure that your base path exists -> {}".format(base_path))
-            sys.exit(1)
-        experiments_dir = os.path.join(base_path, "Experiments_FC_09_18_gridsearch_layers")
-        if not os.path.exists(experiments_dir):
-            os.mkdir(experiments_dir)
-        underscored_experiment_id = "_".join(str(experiment_id).strip().split(" "))
-        specific_run_dir = os.path.join(experiments_dir, "run_" + underscored_experiment_id)
-        if not os.path.exists(specific_run_dir):
-            os.mkdir(specific_run_dir)
-        self.specific_run_dir = specific_run_dir
-
-        # Create the respective folders for this run
-        qgcn_specific_run_dir = os.path.join(specific_run_dir, "qgcn")
-        if not os.path.exists(qgcn_specific_run_dir):
-            os.mkdir(qgcn_specific_run_dir)
-        self.qgcn_specific_run_dir = qgcn_specific_run_dir
-        
-        sgcn_specific_run_dir = os.path.join(specific_run_dir, "sgcn")
-        if not os.path.exists(sgcn_specific_run_dir):
-            os.mkdir(sgcn_specific_run_dir)
-        self.sgcn_specific_run_dir = sgcn_specific_run_dir
-
-        # Copy architecture files (assuming they exist)
-        try:
-            gnn_source_filepath = os.path.join(base_path, "gnn", "architectures.py")
-            if os.path.exists(gnn_source_filepath):
-                qgcn_destination_filepath = os.path.join(self.qgcn_specific_run_dir, "architectures.py")
-                if not os.path.exists(qgcn_destination_filepath):
-                    shutil.copyfile(gnn_source_filepath, qgcn_destination_filepath)
-                sgcn_destination_filepath = os.path.join(self.sgcn_specific_run_dir, "architectures.py")
-                if not os.path.exists(sgcn_destination_filepath):
-                    shutil.copyfile(gnn_source_filepath, sgcn_destination_filepath)
-        except Exception as e:
-            print(f"Warning: Could not copy architecture files: {e}")
-
-    def __cache_models(self):
-        """Cache models with epoch information."""
-        if self.qgcn_model_exists:
-            # When early stopping is enabled, we should NOT save again if early stopping was used
-            # because the best model was already saved during training
-            # BUT if early stopping was enabled and DIDN'T trigger, we should save the best model
-            should_save_qgcn = True
-            
-            if self.use_early_stopping and hasattr(self, 'qgcn_early_stopping') and self.qgcn_early_stopping:
-                if self.qgcn_early_stopping.early_stop:
-                    # Early stopping triggered - best model already saved, don't save again
-                    should_save_qgcn = False
-                    print(f"Skipping final QGCN model save - early stopping triggered, best model already saved")
-                else:
-                    # Early stopping was enabled but didn't trigger - save the best model we found
-                    should_save_qgcn = True
-                    print(f"Early stopping enabled but didn't trigger - saving best QGCN model")
-            
-            if should_save_qgcn:
-                # For early stopping that didn't trigger, restore best weights before saving
-                if self.use_early_stopping and hasattr(self, 'qgcn_early_stopping') and self.qgcn_early_stopping:
-                    if hasattr(self.qgcn_early_stopping, 'best_weights') and self.qgcn_early_stopping.best_weights:
-                        self.qgcn_model.load_state_dict(self.qgcn_early_stopping.best_weights)
-                        print(f"Restored QGCN best weights before final save (best epoch: {getattr(self.qgcn_early_stopping, 'best_epoch', 'unknown')})")
-                
-                # Save complete model first (most reliable for loading)
-                torch.save(self.qgcn_model, os.path.join(self.qgcn_specific_run_dir, "model_complete.pth"))
-                
-                # Save model with metadata including epoch info
-                best_epoch = getattr(self.qgcn_early_stopping, 'best_epoch', self.final_qgcn_epoch) if self.use_early_stopping and hasattr(self, 'qgcn_early_stopping') else self.final_qgcn_epoch
-                
-                qgcn_save_dict = {
-                    'model_state_dict': self.qgcn_model.state_dict(),
-                    'optimizer_state_dict': self.qgcn_model_optimizer.state_dict(),
-                    'best_epoch': best_epoch,
-                    'final_epoch': getattr(self, 'final_qgcn_epoch', 0),
-                    'is_best_model': True,
-                    'model_config': {
-                        'model_type': type(self.qgcn_model).__name__,
-                        'architecture': str(self.qgcn_model)
-                    },
-                    # Add target scaling information
-                    'target_scaling': {
-                        'use_target_scaling': self.use_target_scaling,
-                        'target_scaler_mean': self.target_scaler_mean,
-                        'target_scaler_std': self.target_scaler_std
-                    }
-                }
-                torch.save(qgcn_save_dict, os.path.join(self.qgcn_specific_run_dir, "model.pth"))
-            
-            # Save epoch info in a separate text file for easy reading
-            with open(os.path.join(self.qgcn_specific_run_dir, "training_info.txt"), 'w') as f:
-                f.write(f"Final training epoch: {getattr(self, 'final_qgcn_epoch', 0)}\n")
-                f.write(f"Model type: {type(self.qgcn_model).__name__}\n")
-                f.write(f"Early stopping: {'Yes' if self.use_early_stopping else 'No'}\n")
-                if self.use_early_stopping and hasattr(self, 'qgcn_early_stopping'):
-                    f.write(f"Early stopped: {'Yes' if self.qgcn_early_stopping.early_stop else 'No'}\n")
-                    if hasattr(self.qgcn_early_stopping, 'best_epoch'):
-                        f.write(f"Best model epoch: {getattr(self.qgcn_early_stopping, 'best_epoch', 'unknown')}\n")
-                        f.write(f"Monitor metric: {self.early_stopping_config.get('monitor', 'loss')}\n")
-
-        if self.sgcn_model_exists:
-            # Same logic for SGCN
-            should_save_sgcn = True
-            
-            if self.use_early_stopping and hasattr(self, 'sgcn_early_stopping') and self.sgcn_early_stopping:
-                if self.sgcn_early_stopping.early_stop:
-                    # Early stopping triggered - best model already saved, don't save again
-                    should_save_sgcn = False
-                    print(f"Skipping final SGCN model save - early stopping triggered, best model already saved")
-                else:
-                    # Early stopping was enabled but didn't trigger - save the best model we found
-                    should_save_sgcn = True
-                    print(f"Early stopping enabled but didn't trigger - saving best SGCN model")
-            
-            if should_save_sgcn:
-                # For early stopping that didn't trigger, restore best weights before saving
-                if self.use_early_stopping and hasattr(self, 'sgcn_early_stopping') and self.sgcn_early_stopping:
-                    if hasattr(self.sgcn_early_stopping, 'best_weights') and self.sgcn_early_stopping.best_weights:
-                        self.sgcn_model.load_state_dict(self.sgcn_early_stopping.best_weights)
-                        print(f"Restored SGCN best weights before final save (best epoch: {getattr(self.sgcn_early_stopping, 'best_epoch', 'unknown')})")
-                
-                # Save complete model first (most reliable for loading)
-                torch.save(self.sgcn_model, os.path.join(self.sgcn_specific_run_dir, "model_complete.pth"))
-                
-                # Save model with metadata including epoch info
-                best_epoch = getattr(self.sgcn_early_stopping, 'best_epoch', self.final_sgcn_epoch) if self.use_early_stopping and hasattr(self, 'sgcn_early_stopping') else self.final_sgcn_epoch
-                
-                sgcn_save_dict = {
-                    'model_state_dict': self.sgcn_model.state_dict(),
-                    'optimizer_state_dict': self.sgcn_model_optimizer.state_dict(),
-                    'best_epoch': best_epoch,
-                    'final_epoch': getattr(self, 'final_sgcn_epoch', 0),
-                    'is_best_model': True,
-                    'model_config': {
-                        'model_type': type(self.sgcn_model).__name__,
-                        'architecture': str(self.sgcn_model)
-                    },
-                    # Add target scaling information
-                    'target_scaling': {
-                        'use_target_scaling': self.use_target_scaling,
-                        'target_scaler_mean': self.target_scaler_mean,
-                        'target_scaler_std': self.target_scaler_std
-                    }
-                }
-                torch.save(sgcn_save_dict, os.path.join(self.sgcn_specific_run_dir, "model.pth"))
-            
-            # Save epoch info in a separate text file for easy reading
-            with open(os.path.join(self.sgcn_specific_run_dir, "training_info.txt"), 'w') as f:
-                f.write(f"Final training epoch: {getattr(self, 'final_sgcn_epoch', 0)}\n")
-                f.write(f"Model type: {type(self.sgcn_model).__name__}\n")
-                f.write(f"Early stopping: {'Yes' if self.use_early_stopping else 'No'}\n")
-                if self.use_early_stopping and hasattr(self, 'sgcn_early_stopping'):
-                    f.write(f"Early stopped: {'Yes' if self.sgcn_early_stopping.early_stop else 'No'}\n")
-                    if hasattr(self.sgcn_early_stopping, 'best_epoch'):
-                        f.write(f"Best model epoch: {getattr(self.sgcn_early_stopping, 'best_epoch', 'unknown')}\n")
-                        f.write(f"Monitor metric: {self.early_stopping_config.get('monitor', 'loss')}\n")
-
-    def __cache_results(self, train_qgcn_loss_array, train_sgcn_loss_array, 
-                        train_qgcn_mse_array, train_sgcn_mse_array,
-                        test_qgcn_mse_array, test_sgcn_mse_array,
-                        train_qgcn_r2_array=None, train_sgcn_r2_array=None,
-                        test_qgcn_r2_array=None, test_sgcn_r2_array=None,
-                        learning_rates_qgcn=None, learning_rates_sgcn=None):
-        """Save training results to disk."""
-        if self.qgcn_specific_run_dir != None and self.qgcn_model_exists:
-            train_qgcn_loss_filepath = os.path.join(self.qgcn_specific_run_dir, "train_loss.pk")
-            train_qgcn_mse_filepath = os.path.join(self.qgcn_specific_run_dir, "train_mse.pk")
-            test_qgcn_mse_filepath = os.path.join(self.qgcn_specific_run_dir, "test_mse.pk")
-            with open(train_qgcn_loss_filepath, 'wb') as f:
-                pickle.dump(train_qgcn_loss_array, f)
-            with open(train_qgcn_mse_filepath, 'wb') as f:
-                pickle.dump(train_qgcn_mse_array, f)
-            with open(test_qgcn_mse_filepath, 'wb') as f:
-                pickle.dump(test_qgcn_mse_array, f)
-            
-            # Save R² arrays if provided
-            if train_qgcn_r2_array is not None:
-                train_qgcn_r2_filepath = os.path.join(self.qgcn_specific_run_dir, "train_r2.pk")
-                with open(train_qgcn_r2_filepath, 'wb') as f:
-                    pickle.dump(train_qgcn_r2_array, f)
-            if test_qgcn_r2_array is not None:
-                test_qgcn_r2_filepath = os.path.join(self.qgcn_specific_run_dir, "test_r2.pk")
-                with open(test_qgcn_r2_filepath, 'wb') as f:
-                    pickle.dump(test_qgcn_r2_array, f)
-            
-            if learning_rates_qgcn is not None:
-                lr_qgcn_filepath = os.path.join(self.qgcn_specific_run_dir, "learning_rates.pk")
-                with open(lr_qgcn_filepath, 'wb') as f:
-                    pickle.dump(learning_rates_qgcn, f)
-        
-        if self.sgcn_specific_run_dir != None and self.sgcn_model_exists:
-            train_sgcn_loss_filepath = os.path.join(self.sgcn_specific_run_dir, "train_loss.pk")
-            train_sgcn_mse_filepath = os.path.join(self.sgcn_specific_run_dir, "train_mse.pk")
-            test_sgcn_mse_filepath = os.path.join(self.sgcn_specific_run_dir, "test_mse.pk")
-            with open(train_sgcn_loss_filepath, 'wb') as f:
-                pickle.dump(train_sgcn_loss_array, f)
-            with open(train_sgcn_mse_filepath, 'wb') as f:
-                pickle.dump(train_sgcn_mse_array, f)
-            with open(test_sgcn_mse_filepath, 'wb') as f:
-                pickle.dump(test_sgcn_mse_array, f)
-            
-            # Save R² arrays if provided
-            if train_sgcn_r2_array is not None:
-                train_sgcn_r2_filepath = os.path.join(self.sgcn_specific_run_dir, "train_r2.pk")
-                with open(train_sgcn_r2_filepath, 'wb') as f:
-                    pickle.dump(train_sgcn_r2_array, f)
-            if test_sgcn_r2_array is not None:
-                test_sgcn_r2_filepath = os.path.join(self.sgcn_specific_run_dir, "test_r2.pk")
-                with open(test_sgcn_r2_filepath, 'wb') as f:
-                    pickle.dump(test_sgcn_r2_array, f)
-            
-            if learning_rates_sgcn is not None:
-                lr_sgcn_filepath = os.path.join(self.sgcn_specific_run_dir, "learning_rates.pk")
-                with open(lr_sgcn_filepath, 'wb') as f:
-                    pickle.dump(learning_rates_sgcn, f)
-
-    def __move_graph_data_to_device(self, data):
-        """Move graph data to target device."""
-        if hasattr(data, 'x') and data.x is not None:
-            data.x = data.x.to(self.device)
-        if hasattr(data, 'edge_index') and data.edge_index is not None:
-            data.edge_index = data.edge_index.to(self.device)
-        if hasattr(data, 'y') and data.y is not None:
-            data.y = data.y.to(self.device)
-        if hasattr(data, 'pos') and data.pos is not None:
-            data.pos = data.pos.to(self.device)
-        if hasattr(data, 'batch') and data.batch is not None:
-            data.batch = data.batch.to(self.device)
-        if hasattr(data, 'edge_attr') and data.edge_attr is not None:
-            data.edge_attr = data.edge_attr.to(self.device)
-        if hasattr(data, 'demographics') and data.demographics is not None:
-            data.demographics = data.demographics.to(self.device)
-        return data
-
-    def _fit_target_scaler(self):
-        """Fit target scaler using training data."""
-        print("Fitting target scaler on training data...")
-        
-        # Collect all training targets
-        train_targets = []
-        
-        # Use SGCN training data (or QGCN if SGCN doesn't exist)
-        if self.sgcn_model_exists:
-            for data in self.data_struct["geometric"]["sgcn_train_data"]:
-                train_targets.append(data.y.item() if data.y.dim() == 0 else data.y.cpu().numpy())
-        elif self.qgcn_model_exists:
-            for data in self.data_struct["geometric"]["qgcn_train_data"]:
-                train_targets.append(data.y.item() if data.y.dim() == 0 else data.y.cpu().numpy())
-        
-        train_targets = np.array(train_targets)
-        
-        # Calculate mean and std
-        self.target_scaler_mean = np.mean(train_targets)
-        self.target_scaler_std = np.std(train_targets)
-        
-        print(f"Target scaling - Mean: {self.target_scaler_mean:.4f}, Std: {self.target_scaler_std:.4f}")
-        
-        # Apply scaling to all datasets
-        self._apply_target_scaling()
-    
-    def _apply_target_scaling(self):
-        """Apply target scaling to all datasets."""
-        print("Applying target scaling to datasets...")
-        
-        # Scale SGCN datasets
-        if self.sgcn_model_exists:
-            for data in self.data_struct["geometric"]["sgcn_train_data"]:
-                data.y = (data.y - self.target_scaler_mean) / self.target_scaler_std
-            for data in self.data_struct["geometric"]["sgcn_test_data"]:
-                data.y = (data.y - self.target_scaler_mean) / self.target_scaler_std
-        
-        # Scale QGCN datasets
-        if self.qgcn_model_exists:
-            for data in self.data_struct["geometric"]["qgcn_train_data"]:
-                data.y = (data.y - self.target_scaler_mean) / self.target_scaler_std
-            for data in self.data_struct["geometric"]["qgcn_test_data"]:
-                data.y = (data.y - self.target_scaler_mean) / self.target_scaler_std
-    
-    def _inverse_transform_targets(self, scaled_targets):
-        """Convert scaled targets back to original scale."""
-        if self.use_target_scaling:
-            return scaled_targets * self.target_scaler_std + self.target_scaler_mean
-        return scaled_targets
-    
-    def _transform_targets(self, original_targets):
-        """Convert original targets to scaled targets."""
-        if self.use_target_scaling:
-            return (original_targets - self.target_scaler_mean) / self.target_scaler_std
-        return original_targets
-
     def __train(self, train_qgcn=True, train_sgcn=True):
         """Train models for one epoch with selective training."""
         # For QGCN training
@@ -691,7 +353,7 @@ class ExperimentRegression:
             self.qgcn_model.train()
             if self.profile_run: start_time = time.time()
             for data in self.sp_qgcn_train_dataloader:
-                qgcn_data = self.__move_graph_data_to_device(data)
+                qgcn_data = move_graph_data_to_device(data, self.device)
                 qgcn_total_graphs += qgcn_data.num_graphs
                 
                 self.qgcn_model_optimizer.zero_grad()
@@ -711,7 +373,7 @@ class ExperimentRegression:
             self.sgcn_model.train()
             if self.profile_run: start_time = time.time()
             for data in self.sp_sgcn_train_dataloader:
-                sgcn_data = self.__move_graph_data_to_device(data)
+                sgcn_data = move_graph_data_to_device(data, self.device)
                 sgcn_total_graphs += sgcn_data.num_graphs
                 
                 self.sgcn_model_optimizer.zero_grad()
@@ -725,9 +387,247 @@ class ExperimentRegression:
                 profile_stats = f"; Epoch took a total of {stop_time - start_time}s"
                 print(f"Single epoch training... sgcn_model done{profile_stats}")
 
-        # Remove the automatic model caching here
-        # if self.cache_run:
-        #     self.__cache_models()
+        # Normalize loss by the total length of training set
+        if self.qgcn_model_exists and qgcn_total_graphs > 0:
+            qgcn_loss_all /= qgcn_total_graphs
+        if self.sgcn_model_exists and sgcn_total_graphs > 0:
+            sgcn_loss_all /= sgcn_total_graphs
+
+        return qgcn_loss_all, sgcn_loss_all
+
+    def __evaluate(self, eval_train_data=False):
+        """Evaluate models on train or test data using utility function."""
+        qgcn_mse, qgcn_r2 = 0, 0
+        if self.qgcn_model_exists:
+            sp_qgcn_dataset_loader = self.sp_qgcn_train_dataloader if eval_train_data else self.sp_qgcn_test_dataloader
+            qgcn_mse, qgcn_r2 = evaluate_model_performance(
+                self.qgcn_model, sp_qgcn_dataset_loader, self.device,
+                self.target_scaler.mean, self.target_scaler.std
+            )
+
+        sgcn_mse, sgcn_r2 = 0, 0
+        if self.sgcn_model_exists:
+            sp_sgcn_dataset_loader = self.sp_sgcn_train_dataloader if eval_train_data else self.sp_sgcn_test_dataloader
+            sgcn_mse, sgcn_r2 = evaluate_model_performance(
+                self.sgcn_model, sp_sgcn_dataset_loader, self.device,
+                self.target_scaler.mean, self.target_scaler.std
+            )
+
+        return qgcn_mse, sgcn_mse, qgcn_r2, sgcn_r2
+
+    def __save_best_model(self, model_type, current_epoch=None):
+        """Save model when it achieves best performance using utility function."""
+        if model_type == 'sgcn' and self.sgcn_model_exists:
+            epoch_info = {
+                'best_epoch': current_epoch or getattr(self, 'current_epoch', 0),
+                'final_epoch': current_epoch or getattr(self, 'current_epoch', 0),
+                'is_best_model': True
+            }
+            target_scaler_info = {
+                'use_target_scaling': self.target_scaler.use_scaling,
+                'target_scaler_mean': self.target_scaler.mean,
+                'target_scaler_std': self.target_scaler.std
+            }
+            
+            save_model_with_metadata(
+                self.sgcn_model, self.sgcn_model_optimizer, 
+                self.sgcn_specific_run_dir, epoch_info, target_scaler_info
+            )
+            
+            if self.use_early_stopping:
+                monitor_metric = self.early_stopping_config.get('monitor', 'loss')
+                print(f"✓ Saved best SGCN model from epoch {current_epoch} (best {monitor_metric})")
+            else:
+                print(f"✓ Saved SGCN model from epoch {current_epoch}")
+
+        elif model_type == 'qgcn' and self.qgcn_model_exists:
+            epoch_info = {
+                'best_epoch': current_epoch or getattr(self, 'current_epoch', 0),
+                'final_epoch': current_epoch or getattr(self, 'current_epoch', 0),
+                'is_best_model': True
+            }
+            target_scaler_info = {
+                'use_target_scaling': self.target_scaler.use_scaling,
+                'target_scaler_mean': self.target_scaler.mean,
+                'target_scaler_std': self.target_scaler.std
+            }
+            
+            save_model_with_metadata(
+                self.qgcn_model, self.qgcn_model_optimizer, 
+                self.qgcn_specific_run_dir, epoch_info, target_scaler_info
+            )
+            
+            if self.use_early_stopping:
+                monitor_metric = self.early_stopping_config.get('monitor', 'loss')
+                print(f"✓ Saved best QGCN model from epoch {current_epoch} (best {monitor_metric})")
+            else:
+                print(f"✓ Saved QGCN model from epoch {current_epoch}")
+
+    # Replace the old __cache_models method
+    def __cache_models(self):
+        """Cache models with epoch information using utility functions."""
+        if self.qgcn_model_exists:
+            should_save_qgcn = True
+            
+            if self.use_early_stopping and hasattr(self, 'qgcn_early_stopping') and self.qgcn_early_stopping:
+                if self.qgcn_early_stopping.early_stop:
+                    should_save_qgcn = False
+                    print(f"Skipping final QGCN model save - early stopping triggered, best model already saved")
+                else:
+                    should_save_qgcn = True
+                    print(f"Early stopping enabled but didn't trigger - saving best QGCN model")
+            
+            if should_save_qgcn:
+                if self.use_early_stopping and hasattr(self, 'qgcn_early_stopping') and self.qgcn_early_stopping:
+                    if hasattr(self.qgcn_early_stopping, 'best_weights') and self.qgcn_early_stopping.best_weights:
+                        self.qgcn_model.load_state_dict(self.qgcn_early_stopping.best_weights)
+                        print(f"Restored QGCN best weights before final save (best epoch: {getattr(self.qgcn_early_stopping, 'best_epoch', 'unknown')})")
+                
+                epoch_info = {
+                    'best_epoch': getattr(self.qgcn_early_stopping, 'best_epoch', self.final_qgcn_epoch) if self.use_early_stopping and hasattr(self, 'qgcn_early_stopping') else self.final_qgcn_epoch,
+                    'final_epoch': getattr(self, 'final_qgcn_epoch', 0),
+                    'is_best_model': True
+                }
+                target_scaler_info = {
+                    'use_target_scaling': self.target_scaler.use_scaling,
+                    'target_scaler_mean': self.target_scaler.mean,
+                    'target_scaler_std': self.target_scaler.std
+                }
+                
+                save_model_with_metadata(
+                    self.qgcn_model, self.qgcn_model_optimizer,
+                    self.qgcn_specific_run_dir, epoch_info, target_scaler_info
+                )
+            
+            # Save training info using utility function
+            save_training_info(
+                self.qgcn_specific_run_dir, 
+                getattr(self, 'final_qgcn_epoch', 0),
+                type(self.qgcn_model).__name__,
+                self.early_stopping_config if self.use_early_stopping else None,
+                self.qgcn_early_stopping if self.use_early_stopping else None
+            )
+
+        # Similar logic for SGCN
+        if self.sgcn_model_exists:
+            should_save_sgcn = True
+            
+            if self.use_early_stopping and hasattr(self, 'sgcn_early_stopping') and self.sgcn_early_stopping:
+                if self.sgcn_early_stopping.early_stop:
+                    should_save_sgcn = False
+                    print(f"Skipping final SGCN model save - early stopping triggered, best model already saved")
+                else:
+                    should_save_sgcn = True
+                    print(f"Early stopping enabled but didn't trigger - saving best SGCN model")
+            
+            if should_save_sgcn:
+                if self.use_early_stopping and hasattr(self, 'sgcn_early_stopping') and self.sgcn_early_stopping:
+                    if hasattr(self.sgcn_early_stopping, 'best_weights') and self.sgcn_early_stopping.best_weights:
+                        self.sgcn_model.load_state_dict(self.sgcn_early_stopping.best_weights)
+                        print(f"Restored SGCN best weights before final save (best epoch: {getattr(self.sgcn_early_stopping, 'best_epoch', 'unknown')})")
+                
+                epoch_info = {
+                    'best_epoch': getattr(self.sgcn_early_stopping, 'best_epoch', self.final_sgcn_epoch) if self.use_early_stopping and hasattr(self, 'sgcn_early_stopping') else self.final_sgcn_epoch,
+                    'final_epoch': getattr(self, 'final_sgcn_epoch', 0),
+                    'is_best_model': True
+                }
+                target_scaler_info = {
+                    'use_target_scaling': self.target_scaler.use_scaling,
+                    'target_scaler_mean': self.target_scaler.mean,
+                    'target_scaler_std': self.target_scaler.std
+                }
+                
+                save_model_with_metadata(
+                    self.sgcn_model, self.sgcn_model_optimizer,
+                    self.sgcn_specific_run_dir, epoch_info, target_scaler_info
+                )
+            
+            # Save training info using utility function
+            save_training_info(
+                self.sgcn_specific_run_dir, 
+                getattr(self, 'final_sgcn_epoch', 0),
+                type(self.sgcn_model).__name__,
+                self.early_stopping_config if self.use_early_stopping else None,
+                self.sgcn_early_stopping if self.use_early_stopping else None
+            )
+
+    # Replace the old __cache_results method
+    def __cache_results(self, train_qgcn_loss_array, train_sgcn_loss_array, 
+                        train_qgcn_mse_array, train_sgcn_mse_array,
+                        test_qgcn_mse_array, test_sgcn_mse_array,
+                        train_qgcn_r2_array=None, train_sgcn_r2_array=None,
+                        test_qgcn_r2_array=None, test_sgcn_r2_array=None,
+                        learning_rates_qgcn=None, learning_rates_sgcn=None):
+        """Save training results to disk using utility function."""
+        results_dict = {
+            'train_qgcn_loss': train_qgcn_loss_array,
+            'train_sgcn_loss': train_sgcn_loss_array,
+            'train_qgcn_mse': train_qgcn_mse_array,
+            'train_sgcn_mse': train_sgcn_mse_array,
+            'test_qgcn_mse': test_qgcn_mse_array,
+            'test_sgcn_mse': test_sgcn_mse_array,
+            'train_qgcn_r2': train_qgcn_r2_array,
+            'train_sgcn_r2': train_sgcn_r2_array,
+            'test_qgcn_r2': test_qgcn_r2_array,
+            'test_sgcn_r2': test_sgcn_r2_array,
+            'learning_rates_qgcn': learning_rates_qgcn,
+            'learning_rates_sgcn': learning_rates_sgcn
+        }
+        
+        save_dirs = {
+            'qgcn': self.qgcn_specific_run_dir if self.qgcn_model_exists else None,
+            'sgcn': self.sgcn_specific_run_dir if self.sgcn_model_exists else None
+        }
+        
+        cache_training_results(results_dict, save_dirs)
+
+    # Replace the static plot_history method
+    @staticmethod
+    def plot_history(data, labels):
+        """Plot training history using utility function."""
+        plot_training_history(data, labels)
+
+    def __train(self, train_qgcn=True, train_sgcn=True):
+        """Train models for one epoch with selective training."""
+        # For QGCN training
+        qgcn_loss_all, qgcn_total_graphs = 0, 0
+        if self.qgcn_model_exists and train_qgcn:
+            self.qgcn_model.train()
+            if self.profile_run: start_time = time.time()
+            for data in self.sp_qgcn_train_dataloader:
+                qgcn_data = move_graph_data_to_device(data, self.device)
+                qgcn_total_graphs += qgcn_data.num_graphs
+                
+                self.qgcn_model_optimizer.zero_grad()
+                qgcn_output = self.qgcn_model(qgcn_data)
+                qgcn_loss = F.mse_loss(qgcn_output, qgcn_data.y.float())
+                qgcn_loss.backward()
+                qgcn_loss_all += qgcn_data.num_graphs * qgcn_loss.item()
+                self.qgcn_model_optimizer.step()
+            if self.profile_run: 
+                stop_time = time.time()
+                profile_stats = f"; Epoch took a total of {stop_time - start_time}s"
+                print(f"Single epoch training... qgcn_model done{profile_stats}")
+
+        # For SGCN training
+        sgcn_loss_all, sgcn_total_graphs = 0, 0
+        if self.sgcn_model_exists and train_sgcn:
+            self.sgcn_model.train()
+            if self.profile_run: start_time = time.time()
+            for data in self.sp_sgcn_train_dataloader:
+                sgcn_data = move_graph_data_to_device(data, self.device)
+                sgcn_total_graphs += sgcn_data.num_graphs
+                
+                self.sgcn_model_optimizer.zero_grad()
+                sgcn_output = self.sgcn_model(sgcn_data)
+                sgcn_loss = F.mse_loss(sgcn_output, sgcn_data.y.float())
+                sgcn_loss.backward()
+                sgcn_loss_all += sgcn_data.num_graphs * sgcn_loss.item()
+                self.sgcn_model_optimizer.step()
+            if self.profile_run: 
+                stop_time = time.time()
+                profile_stats = f"; Epoch took a total of {stop_time - start_time}s"
+                print(f"Single epoch training... sgcn_model done{profile_stats}")
 
         # Normalize loss by the total length of training set
         if self.qgcn_model_exists and qgcn_total_graphs > 0:
@@ -737,122 +637,23 @@ class ExperimentRegression:
 
         return qgcn_loss_all, sgcn_loss_all
 
-    def __save_best_model(self, model_type, current_epoch=None):
-        """Save model when it achieves best performance."""
-        if model_type == 'sgcn' and self.sgcn_model_exists:
-            # Save complete model first
-            torch.save(self.sgcn_model, os.path.join(self.sgcn_specific_run_dir, "model_complete.pth"))
-            
-            # Save state dict with metadata
-            sgcn_save_dict = {
-                'model_state_dict': self.sgcn_model.state_dict(),
-                'optimizer_state_dict': self.sgcn_model_optimizer.state_dict(),
-                'best_epoch': current_epoch or getattr(self, 'current_epoch', 0),
-                'final_epoch': current_epoch or getattr(self, 'current_epoch', 0),
-                'is_best_model': True,  # Mark as best epoch
-                'model_config': {
-                    'model_type': type(self.sgcn_model).__name__,
-                    'architecture': str(self.sgcn_model)
-                }
-            }
-            torch.save(sgcn_save_dict, os.path.join(self.sgcn_specific_run_dir, "model.pth"))
-            if self.use_early_stopping:
-                monitor_metric = self.early_stopping_config.get('monitor', 'loss')
-                print(f"✓ Saved best SGCN model from epoch {current_epoch} (best {monitor_metric})")
-            else:
-                print(f"✓ Saved SGCN model from epoch {current_epoch}")
-
-        elif model_type == 'qgcn' and self.qgcn_model_exists:
-            # Similar changes for QGCN
-            torch.save(self.qgcn_model, os.path.join(self.qgcn_specific_run_dir, "model_complete.pth"))
-            
-            qgcn_save_dict = {
-                'model_state_dict': self.qgcn_model.state_dict(),
-                'optimizer_state_dict': self.qgcn_model_optimizer.state_dict(),
-                'best_epoch': current_epoch or getattr(self, 'current_epoch', 0),
-                'final_epoch': current_epoch or getattr(self, 'current_epoch', 0),
-                'is_best_model': True,  # Mark as best epoch
-                'model_config': {
-                    'model_type': type(self.qgcn_model).__name__,
-                    'architecture': str(self.qgcn_model)
-                }
-            }
-            torch.save(qgcn_save_dict, os.path.join(self.qgcn_specific_run_dir, "model.pth"))
-            if self.use_early_stopping:
-                monitor_metric = self.early_stopping_config.get('monitor', 'loss')
-                print(f"✓ Saved best QGCN model from epoch {current_epoch} (best {monitor_metric})")
-            else:
-                print(f"✓ Saved QGCN model from epoch {current_epoch}")
-
     def __evaluate(self, eval_train_data=False):
-        """Evaluate models on train or test data and return both MSE and R² in original scale."""
-        # For QGCN evaluation
+        """Evaluate models on train or test data using utility function."""
         qgcn_mse, qgcn_r2 = 0, 0
         if self.qgcn_model_exists:
             sp_qgcn_dataset_loader = self.sp_qgcn_train_dataloader if eval_train_data else self.sp_qgcn_test_dataloader
-            self.qgcn_model.eval()
-            
-            total_mse, total_samples = 0, 0
-            all_predictions, all_targets = [], []
-            
-            with torch.no_grad():
-                for data in sp_qgcn_dataset_loader:
-                    data = self.__move_graph_data_to_device(data)
-                    predictions = self.qgcn_model(data)
-                    
-                    # Convert predictions and targets back to original scale
-                    predictions_orig = self._inverse_transform_targets(predictions.cpu().numpy())
-                    targets_orig = self._inverse_transform_targets(data.y.cpu().numpy())
-                    
-                    # Calculate MSE in original scale
-                    mse = np.mean((predictions_orig - targets_orig) ** 2)
-                    total_mse += mse * len(predictions_orig)
-                    total_samples += len(predictions_orig)
-                    
-                    all_predictions.extend(predictions_orig)
-                    all_targets.extend(targets_orig)
-            
-            qgcn_mse = total_mse / total_samples
-            
-            # Calculate R² score in original scale
-            if len(all_predictions) > 1:
-                qgcn_r2 = r2_score(all_targets, all_predictions)
-            else:
-                qgcn_r2 = 0
+            qgcn_mse, qgcn_r2 = evaluate_model_performance(
+                self.qgcn_model, sp_qgcn_dataset_loader, self.device,
+                self.target_scaler.mean, self.target_scaler.std
+            )
 
-        # For SGCN evaluation
         sgcn_mse, sgcn_r2 = 0, 0
         if self.sgcn_model_exists:
             sp_sgcn_dataset_loader = self.sp_sgcn_train_dataloader if eval_train_data else self.sp_sgcn_test_dataloader
-            self.sgcn_model.eval()
-            
-            total_mse, total_samples = 0, 0
-            all_predictions, all_targets = [], []
-            
-            with torch.no_grad():
-                for data in sp_sgcn_dataset_loader:
-                    data = self.__move_graph_data_to_device(data)
-                    predictions = self.sgcn_model(data)
-                    
-                    # Convert predictions and targets back to original scale
-                    predictions_orig = self._inverse_transform_targets(predictions.cpu().numpy())
-                    targets_orig = self._inverse_transform_targets(data.y.cpu().numpy())
-                    
-                    # Calculate MSE in original scale
-                    mse = np.mean((predictions_orig - targets_orig) ** 2)
-                    total_mse += mse * len(predictions_orig)
-                    total_samples += len(predictions_orig)
-                    
-                    all_predictions.extend(predictions_orig)
-                    all_targets.extend(targets_orig)
-            
-            sgcn_mse = total_mse / total_samples
-            
-            # Calculate R² score in original scale
-            if len(all_predictions) > 1:
-                sgcn_r2 = r2_score(all_targets, all_predictions)
-            else:
-                sgcn_r2 = 0
+            sgcn_mse, sgcn_r2 = evaluate_model_performance(
+                self.sgcn_model, sp_sgcn_dataset_loader, self.device,
+                self.target_scaler.mean, self.target_scaler.std
+            )
 
         return qgcn_mse, sgcn_mse, qgcn_r2, sgcn_r2
 
@@ -1172,35 +973,5 @@ class ExperimentRegression:
 
     @staticmethod
     def plot_history(data, labels):
-        """Plot training history."""
-        font = {'weight':'bold', 'size':8}
-        matplotlib.rc('font', **font)
-        matplotlib.rcParams.update({'font.size':8})
-
-        indicators = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
-        leftover_count = len(data) % 2
-        num_rows = len(data) // 2
-        col_count = 2
-        row_count = num_rows + leftover_count
-        fig, ax = plt.subplots(nrows=row_count, ncols=col_count, figsize=(12, 8))
-        fig.tight_layout(pad=0.8)
-        plt.subplots_adjust(wspace=0.4, hspace=0.5)
-
-        # Loop and plot the data and their labels
-        for i, row_plts in enumerate(ax):
-            for j, row_col_plt in enumerate(row_plts):
-                data_index = i * col_count + j
-                if data_index < len(data):
-                    xdata = list(range(1, len(data[data_index]) + 1))
-                    ydata = data[data_index]
-                    data_label = labels[data_index]
-                    data_indicator = indicators[data_index % len(indicators)]
-                    row_col_plt.plot(xdata, ydata, color=data_indicator, label=data_label)
-                    row_col_plt.set_xticks(xdata)
-                    row_col_plt.legend(loc="upper right")
-                    row_col_plt.set_xlabel('Epoch')
-                    row_col_plt.set_ylabel(data_label)
-                    row_col_plt.set_title('{} vs. No. of epochs'.format(data_label))
-                else:
-                    row_col_plt.set_visible(False)
-        plt.show()
+        """Plot training history using utility function."""
+        plot_training_history(data, labels)
