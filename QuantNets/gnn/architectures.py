@@ -5,6 +5,7 @@ import torch_geometric.nn as pyg_nn
 from torch_geometric.nn import global_mean_pool
 from torch_geometric.nn.aggr import AttentionalAggregation
 from torch_geometric.nn import GraphConv, GATv2Conv
+from torch_geometric.nn import JumpingKnowledge
 
 # GraphConv. 2018 https://arxiv.org/abs/1810.02244
 # class GCNConv(
@@ -153,18 +154,23 @@ class GraphConvNet(torch.nn.Module):
 class GATv2ConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=4, out_sf=2, hidden_heads=4, bias=True, aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.5):
+                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.5,
+                jk_mode='cat'):  # Added jumping knowledge mode parameter
         super(GATv2ConvNet, self).__init__()
         self.layers_num = layers_num
-        self.out_dim = out_dim  # Store output dimension
+        self.out_dim = out_dim
         self.include_demo = include_demo
         self.demo_dim = demo_dim
         self.dropout_rate = dropout_rate
+        self.jk_mode = jk_mode  # 'cat', 'max', 'lstm'
 
         self.node_embedding = torch.nn.Embedding(
             num_embeddings=input_features,
-            embedding_dim=64
+            embedding_dim=embedding_dim
         )
+
+        # Add linear projection layer to convert embedding to size 64
+        self.embedding_projection = torch.nn.Linear(embedding_dim, 64)
 
         self.conv_layers = [GATv2Conv(
                                     in_channels=64,
@@ -197,17 +203,28 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.ELU() for _ in range(layers_num - 1)
         ])
 
+        # Add Jumping Knowledge layer
+        self.jump = JumpingKnowledge(mode=jk_mode, channels=64, num_layers=layers_num)
+        
+        # Calculate JK output dimension based on mode
+        if jk_mode == 'cat':
+            jk_output_dim = 64 * layers_num  # Concatenation multiplies dimensions
+        elif jk_mode == 'lstm':
+            jk_output_dim = 64  # LSTM outputs same dimension as input
+        else:  # max mode
+            jk_output_dim = 64  # Max pooling keeps same dimension
+
         # Use AttentionalAggregation instead of GlobalAttention
-        # Gate network for attention weights
+        # Gate network for attention weights - updated for JK output dimension
         attention_gate = torch.nn.Sequential(
-            torch.nn.Linear(64, 32),
+            torch.nn.Linear(jk_output_dim, 32),
             torch.nn.ELU(),
             torch.nn.Linear(32, 1)
         )
         self.global_attention_pool = AttentionalAggregation(gate_nn=attention_gate)
 
-        # Calculate final feature dimension
-        graph_features_dim = 64
+        # Calculate final feature dimension using JK output
+        graph_features_dim = jk_output_dim
 
         if self.include_demo:
             self.demo_projection = torch.nn.Linear(self.demo_dim, 16)
@@ -229,6 +246,12 @@ class GATv2ConvNet(torch.nn.Module):
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
+        
+        # Project embedding to size 64
+        data.x = self.embedding_projection(data.x)
+
+        # Store layer representations for jumping knowledge
+        layer_outputs = []  # Initialize empty list since we only want conv outputs
 
         for i in range(self.layers_num):
             edge_attr = data.edge_attr
@@ -237,6 +260,12 @@ class GATv2ConvNet(torch.nn.Module):
             if i < self.layers_num - 1:
                 data.x = self.batch_norms[i](data.x)
                 data.x = self.activations[i](data.x)
+            
+            # Store layer output for jumping knowledge
+            layer_outputs.append(data.x)
+
+        # Apply jumping knowledge to combine all layer representations
+        data.x = self.jump(layer_outputs)
 
         # Use attentional aggregation instead of global attention pooling
         graph_features = self.global_attention_pool(data.x, data.batch)
