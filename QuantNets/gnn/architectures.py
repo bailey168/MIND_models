@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import torch_geometric.transforms as T
 import torch_geometric.nn as pyg_nn
 from torch_geometric.nn import global_mean_pool
+from torch_geometric.nn.pool import global_add_pool
 from torch_geometric.nn.aggr import AttentionalAggregation
 from torch_geometric.nn import GraphConv, GATv2Conv
 
@@ -197,7 +198,7 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.ELU() for _ in range(layers_num - 1)
         ])
 
-        # Use AttentionalAggregation and global_mean_pool, then concatenate
+        # Use AttentionalAggregation, global_mean_pool, and global_std_pool, then concatenate
         # Gate network for attention weights
         attention_gate = torch.nn.Sequential(
             torch.nn.Linear(64, 32),
@@ -206,8 +207,8 @@ class GATv2ConvNet(torch.nn.Module):
         )
         self.global_attention_pool = AttentionalAggregation(gate_nn=attention_gate)
 
-        # Calculate final feature dimension - now doubled due to concatenation
-        graph_features_dim = 64 * 2  # 64 from attention pool + 64 from mean pool
+        # Calculate final feature dimension - now tripled due to concatenation
+        graph_features_dim = 64 * 3  # 64 from attention pool + 64 from mean pool + 64 from std pool
 
         if self.include_demo:
             self.demo_projection = torch.nn.Linear(self.demo_dim, 16)
@@ -238,10 +239,24 @@ class GATv2ConvNet(torch.nn.Module):
                 data.x = self.batch_norms[i](data.x)
                 data.x = self.activations[i](data.x)
 
-        # Use both attentional aggregation and global mean pooling, then concatenate
+        # Use attentional aggregation, global mean pooling, and global std pooling, then concatenate
         attention_features = self.global_attention_pool(data.x, data.batch)
         mean_features = global_mean_pool(data.x, data.batch)
-        graph_features = torch.cat([attention_features, mean_features], dim=1)
+        
+        # Calculate global standard deviation pooling
+        # First get the mean for each graph
+        batch_size = data.batch.max().item() + 1
+        std_features = torch.zeros(batch_size, data.x.size(1), device=data.x.device)
+        
+        for i in range(batch_size):
+            mask = data.batch == i
+            if mask.sum() > 1:  # Need at least 2 nodes to calculate std
+                graph_nodes = data.x[mask]
+                std_features[i] = torch.std(graph_nodes, dim=0)
+            else:
+                std_features[i] = torch.zeros(data.x.size(1), device=data.x.device)
+        
+        graph_features = torch.cat([attention_features, mean_features, std_features], dim=1)
 
         # Process demographic features through linear layer and concatenate
         if self.include_demo and hasattr(data, 'demographics'):
