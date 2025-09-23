@@ -168,7 +168,6 @@ class GATv2ConvNet(torch.nn.Module):
                 torch.nn.Sequential(
                     torch.nn.Linear(hidden_dim + 16, hidden_dim * 2),
                     torch.nn.LeakyReLU(),
-                    torch.nn.Dropout(self.dropout_rate),
                     torch.nn.Linear(hidden_dim * 2, hidden_dim)
                 ) for _ in range(self.layers_num)
             ])
