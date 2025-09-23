@@ -143,7 +143,7 @@ class GATv2ConvNet(torch.nn.Module):
 
         self.conv_layers = [GATv2Conv(
                                     in_channels=embedding_dim,
-                                    out_channels=64,
+                                    out_channels=hidden_dim,
                                     heads=4,
                                     bias=bias,
                                     edge_dim=1,
@@ -152,8 +152,8 @@ class GATv2ConvNet(torch.nn.Module):
                                     concat=False
                                     )] + \
                            [GATv2Conv(
-                                    in_channels=64,
-                                    out_channels=64,
+                                    in_channels=hidden_dim,
+                                    out_channels=hidden_dim,
                                     heads=4,
                                     bias=bias,
                                     edge_dim=1,
