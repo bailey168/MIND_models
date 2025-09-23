@@ -255,3 +255,128 @@ class GATv2ConvNet(torch.nn.Module):
             return x.squeeze(-1)  # For single-output regression, return scalar values
         else:
             return x  # For multi-output regression, return raw values (no softmax)
+        
+
+# GATv2Conv 2021 https://arxiv.org/abs/2105.14491
+# class GATv2Conv(in_channels: Union[int, Tuple[int, int]], 
+#                 out_channels: int, 
+#                 heads: int = 1, 
+#                 concat: bool = True, 
+#                 negative_slope: float = 0.2, 
+#                 dropout: float = 0.0, 
+#                 add_self_loops: bool = True, 
+#                 edge_dim: Optional[int] = None, 
+#                 fill_value: Union[float, Tensor, str] = 'mean', 
+#                 bias: bool = True, 
+#                 share_weights: bool = False)
+class GATv2ConvNet(torch.nn.Module):
+    def __init__(self, out_dim, input_features, output_channels, layers_num, 
+                model_dim, hidden_sf=4, out_sf=2, hidden_heads=4, bias=True, aggr='add',
+                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.5):
+        super(GATv2ConvNet, self).__init__()
+        self.layers_num = layers_num
+        self.out_dim = out_dim  # Store output dimension
+        self.include_demo = include_demo
+        self.demo_dim = demo_dim
+        self.dropout_rate = dropout_rate
+
+        self.node_embedding = torch.nn.Embedding(
+            num_embeddings=input_features,
+            embedding_dim=embedding_dim
+        )
+
+        # Add linear projection layer to convert embedding to size 64
+        self.embedding_projection = torch.nn.Linear(embedding_dim, 64)
+
+        self.conv_layers = [GATv2Conv(
+                                    in_channels=64,  # Changed from embedding_dim to 64
+                                    out_channels=64,
+                                    heads=4,
+                                    bias=bias,
+                                    edge_dim=1,
+                                    residual=True,
+                                    dropout=self.dropout_rate,
+                                    concat=False
+                                    )] + \
+                           [GATv2Conv(
+                                    in_channels=64,
+                                    out_channels=64,
+                                    heads=4,
+                                    bias=bias,
+                                    edge_dim=1,
+                                    residual=True,
+                                    dropout=self.dropout_rate,
+                                    concat=False
+                                    ) for _ in range(layers_num - 1)]
+        
+        self.conv_layers = torch.nn.ModuleList(self.conv_layers)
+
+        # Add batch normalization and activation layers
+        self.batch_norms = torch.nn.ModuleList([
+            pyg_nn.norm.GraphNorm(64) for _ in range(layers_num - 1)
+        ])
+        self.activations = torch.nn.ModuleList([
+            torch.nn.ELU() for _ in range(layers_num - 1)
+        ])
+
+        # Use AttentionalAggregation instead of GlobalAttention
+        # Gate network for attention weights
+        attention_gate = torch.nn.Sequential(
+            torch.nn.Linear(64, 32),
+            torch.nn.ELU(),
+            torch.nn.Linear(32, 1)
+        )
+        self.global_attention_pool = AttentionalAggregation(gate_nn=attention_gate)
+
+        # Calculate final feature dimension
+        graph_features_dim = 64
+
+        if self.include_demo:
+            self.demo_projection = torch.nn.Linear(self.demo_dim, 16)
+            total_features_dim = graph_features_dim + 16
+        else:
+            total_features_dim = graph_features_dim
+
+        self.classifier = torch.nn.Sequential(
+            torch.nn.Linear(total_features_dim, 64),
+            torch.nn.BatchNorm1d(64),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(self.dropout_rate),
+            torch.nn.Linear(64, 32),
+            torch.nn.BatchNorm1d(32),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(self.dropout_rate),
+            torch.nn.Linear(32, out_dim)
+        )
+
+    def forward(self, data):
+        data.x = self.node_embedding(data.x)
+        
+        # Project embedding to size 64
+        data.x = self.embedding_projection(data.x)
+
+        for i in range(self.layers_num):
+            edge_attr = data.edge_attr
+            data.x = self.conv_layers[i](data.x, data.edge_index, edge_attr=edge_attr)
+
+            if i < self.layers_num - 1:
+                data.x = self.batch_norms[i](data.x)
+                data.x = self.activations[i](data.x)
+
+        # Use attentional aggregation instead of global attention pooling
+        graph_features = self.global_attention_pool(data.x, data.batch)
+
+        # Process demographic features through linear layer and concatenate
+        if self.include_demo and hasattr(data, 'demographics'):
+            demo_features = self.demo_projection(data.demographics)
+            combined_features = torch.cat([graph_features, demo_features], dim=1)
+        else:
+            combined_features = graph_features
+
+        x = self.classifier(combined_features)
+
+        # Changed for regression:
+        if self.out_dim == 1:
+            return x.squeeze(-1)  # For single-output regression, return scalar values
+        else:
+            return x  # For multi-output regression, return raw values (no softmax)
