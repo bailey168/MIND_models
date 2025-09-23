@@ -166,25 +166,28 @@ class GATv2ConvNet(torch.nn.Module):
             embedding_dim=embedding_dim
         )
 
+        # Add linear projection layer to convert embedding to size 64
+        self.embedding_projection = torch.nn.Linear(embedding_dim, 64)
+
         self.conv_layers = [GATv2Conv(
-                                    in_channels=embedding_dim,
-                                    out_channels=16,
+                                    in_channels=64,  # Changed from embedding_dim to 64
+                                    out_channels=64,
                                     heads=4,
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
                                     dropout=self.dropout_rate,
-                                    concat=True
+                                    concat=False
                                     )] + \
                            [GATv2Conv(
                                     in_channels=64,
-                                    out_channels=16,
+                                    out_channels=64,
                                     heads=4,
                                     bias=bias,
                                     edge_dim=1,
                                     residual=True,
                                     dropout=self.dropout_rate,
-                                    concat=True
+                                    concat=False
                                     ) for _ in range(layers_num - 1)]
         
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
@@ -229,6 +232,9 @@ class GATv2ConvNet(torch.nn.Module):
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
+        
+        # Project embedding to size 64
+        data.x = self.embedding_projection(data.x)
 
         for i in range(self.layers_num):
             edge_attr = data.edge_attr

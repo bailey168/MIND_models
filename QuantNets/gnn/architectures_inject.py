@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import torch_geometric.transforms as T
 import torch_geometric.nn as pyg_nn
 from torch_geometric.nn import global_mean_pool
+from torch_geometric.nn.aggr import AttentionalAggregation
 from torch_geometric.nn import GraphConv, GATv2Conv
 
 # GraphConv. 2018 https://arxiv.org/abs/1810.02244
@@ -142,7 +143,6 @@ class GATv2ConvNet(torch.nn.Module):
 
         self.input_projection = torch.nn.Linear(embedding_dim, hidden_dim)
 
-
         # All conv layers have same input/output dimensions
         self.conv_layers = torch.nn.ModuleList([
             GATv2Conv(
@@ -157,7 +157,6 @@ class GATv2ConvNet(torch.nn.Module):
             ) for _ in range(layers_num)
         ])
 
-
         if self.include_demo:
             # 1-layer MLP for demographic data at each layer
             self.demo_mlps = torch.nn.ModuleList([
@@ -169,11 +168,9 @@ class GATv2ConvNet(torch.nn.Module):
                 torch.nn.Sequential(
                     torch.nn.Linear(hidden_dim + 16, hidden_dim * 2),
                     torch.nn.LeakyReLU(),
-                    torch.nn.Dropout(self.dropout_rate),
                     torch.nn.Linear(hidden_dim * 2, hidden_dim)
                 ) for _ in range(self.layers_num)
             ])
-
 
         # Add batch normalization layers
         self.batch_norms = torch.nn.ModuleList([
@@ -183,6 +180,14 @@ class GATv2ConvNet(torch.nn.Module):
         self.activations = torch.nn.ModuleList([
             torch.nn.ELU() for _ in range(layers_num - 1)
         ])
+
+        # Add AttentionalAggregation instead of global_mean_pool
+        attention_gate = torch.nn.Sequential(
+            torch.nn.Linear(hidden_dim, hidden_dim // 2),
+            torch.nn.ELU(),
+            torch.nn.Linear(hidden_dim // 2, 1)
+        )
+        self.global_attention_pool = AttentionalAggregation(gate_nn=attention_gate)
 
         self.classifier = torch.nn.Linear(hidden_dim, out_dim)
 
@@ -215,8 +220,8 @@ class GATv2ConvNet(torch.nn.Module):
                 data.x = self.batch_norms[i](data.x)
                 data.x = self.activations[i](data.x)
 
-        # Global pooling and regression
-        graph_features = global_mean_pool(data.x, data.batch)
+        # Use attentional aggregation instead of global mean pooling
+        graph_features = self.global_attention_pool(data.x, data.batch)
         x = self.classifier(graph_features)
 
         # Changed for regression:
