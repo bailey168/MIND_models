@@ -162,6 +162,9 @@ class GATv2ConvNet(torch.nn.Module):
                                     concat=False
                                     ) for _ in range(layers_num - 1)]
 
+        self.conv_layers = torch.nn.ModuleList(self.conv_layers)
+
+        
         if self.include_demo:
             # 1-layer MLP for demographic data at each layer
             self.demo_mlps = torch.nn.ModuleList([
