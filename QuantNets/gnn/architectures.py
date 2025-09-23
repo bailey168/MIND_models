@@ -133,7 +133,7 @@ class GATv2ConvNet(torch.nn.Module):
 
         self.node_embedding = torch.nn.Embedding(
             num_embeddings=input_features,
-            embedding_dim=embedding_dim
+            embedding_dim=64
         )
 
         # Use consistent dimensions: 16 * 4 = 64 for all layers
@@ -142,7 +142,7 @@ class GATv2ConvNet(torch.nn.Module):
         hidden_dim = out_channels_per_head * heads
 
         self.conv_layers = [GATv2Conv(
-                                    in_channels=embedding_dim,
+                                    in_channels=64,
                                     out_channels=hidden_dim,
                                     heads=4,
                                     bias=bias,
