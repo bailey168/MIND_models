@@ -743,16 +743,21 @@ class ExperimentRegression:
             # Save complete model first
             torch.save(self.sgcn_model, os.path.join(self.sgcn_specific_run_dir, "model_complete.pth"))
             
-            # Save state dict with metadata
+            # Save state dict with metadata INCLUDING target scaling info
             sgcn_save_dict = {
                 'model_state_dict': self.sgcn_model.state_dict(),
                 'optimizer_state_dict': self.sgcn_model_optimizer.state_dict(),
                 'best_epoch': current_epoch or getattr(self, 'current_epoch', 0),
                 'final_epoch': current_epoch or getattr(self, 'current_epoch', 0),
-                'is_best_model': True,  # Mark as best epoch
+                'is_best_model': True,
                 'model_config': {
                     'model_type': type(self.sgcn_model).__name__,
                     'architecture': str(self.sgcn_model)
+                },
+                'target_scaling': {
+                    'use_target_scaling': self.use_target_scaling,
+                    'target_scaler_mean': self.target_scaler_mean,
+                    'target_scaler_std': self.target_scaler_std
                 }
             }
             torch.save(sgcn_save_dict, os.path.join(self.sgcn_specific_run_dir, "model.pth"))
@@ -771,10 +776,15 @@ class ExperimentRegression:
                 'optimizer_state_dict': self.qgcn_model_optimizer.state_dict(),
                 'best_epoch': current_epoch or getattr(self, 'current_epoch', 0),
                 'final_epoch': current_epoch or getattr(self, 'current_epoch', 0),
-                'is_best_model': True,  # Mark as best epoch
+                'is_best_model': True,
                 'model_config': {
                     'model_type': type(self.qgcn_model).__name__,
                     'architecture': str(self.qgcn_model)
+                },
+                'target_scaling': {
+                    'use_target_scaling': self.use_target_scaling,
+                    'target_scaler_mean': self.target_scaler_mean,
+                    'target_scaler_std': self.target_scaler_std
                 }
             }
             torch.save(qgcn_save_dict, os.path.join(self.qgcn_specific_run_dir, "model.pth"))

@@ -46,48 +46,118 @@ class ModelEvaluator:
         )
     
     def _load_model_with_scaling(self, model_path):
-        """Load model and extract target scaling information."""
+        """Load a saved model and extract target-scaling info, with clean fallbacks."""
         model_dir = os.path.dirname(model_path)
-        
+
+        # 1) Load checkpoint safely
         try:
             checkpoint = torch.load(model_path, map_location=self.device)
-            
-            # Debug: Print what's in the checkpoint
-            print(f"Checkpoint keys: {list(checkpoint.keys()) if isinstance(checkpoint, dict) else 'Not a dict'}")
-            if isinstance(checkpoint, dict) and 'target_scaling' in checkpoint:
-                print(f"Target scaling info found: {checkpoint['target_scaling']}")
-        
-            # Extract target scaling info
-            target_scaling_info = {
-                'use_target_scaling': False,
-                'target_scaler_mean': 0.0,
-                'target_scaler_std': 1.0
-            }
-        
-            if isinstance(checkpoint, dict) and 'target_scaling' in checkpoint:
-                target_scaling_info.update(checkpoint['target_scaling'])
-                print(f"Updated target scaling info: {target_scaling_info}")
-        
-            # Load model
-            if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
-                model_complete_path = os.path.join(model_dir, "model_complete.pth")
-                if os.path.exists(model_complete_path):
-                    model = torch.load(model_complete_path, map_location=self.device)
-                    model.load_state_dict(checkpoint['model_state_dict'])
-                    return model.to(self.device), target_scaling_info
-            
-            # Fallback methods
-            model_complete_path = os.path.join(model_dir, "model_complete.pth")
-            if os.path.exists(model_complete_path):
-                model = torch.load(model_complete_path, map_location=self.device)
-                return model.to(self.device), target_scaling_info
-            
-            raise Exception(f"Could not load model from {model_path}")
-            
         except Exception as e:
-            print(f"Error loading model: {e}")
+            print(f"Error loading checkpoint at {model_path}: {e}")
             raise
-    
+
+        # 2) Initialize scaling info
+        target_scaling_info = {
+            'use_target_scaling': False,
+            'target_scaler_mean': 0.0,
+            'target_scaler_std': 1.0,
+        }
+
+        # 3) Pick up scaling info from checkpoint if present
+        if isinstance(checkpoint, dict) and 'target_scaling' in checkpoint:
+            target_scaling_info.update(checkpoint['target_scaling'])
+            print(f"Target scaling info found in checkpoint: {target_scaling_info}")
+        else:
+            # Try to infer from experiment_config.yaml (do NOT crash if missing)
+            experiment_config_path = os.path.join(model_dir, "experiment_config.yaml")
+            if os.path.exists(experiment_config_path):
+                try:
+                    import yaml
+                    with open(experiment_config_path, 'r') as f:
+                        exp_config = yaml.safe_load(f)
+                    # Prefer an explicit boolean flag if your config uses one
+                    uses_scaling = False
+                    if isinstance(exp_config, dict):
+                        # Adjust these keys to your real schema
+                        uses_scaling = (
+                            exp_config.get('use_target_scaling')
+                            or (exp_config.get('training') or {}).get('use_target_scaling')
+                        )
+                    else:
+                        # Last-resort heuristic
+                        uses_scaling = 'use_target_scaling' in str(exp_config)
+
+                    if uses_scaling:
+                        print("Found evidence of target scaling in experiment config; computing from data...")
+                        target_scaling_info = self._compute_target_scaling_from_data()
+                except Exception as e:
+                    print(f"Could not parse experiment config '{experiment_config_path}': {e}")
+
+        # 4) Build / load the model
+        # Case A: checkpoint is a state-dict bundle for a separately saved model definition
+        if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+            model_complete_path = os.path.join(model_dir, "model_complete.pth")
+            if not os.path.exists(model_complete_path):
+                raise FileNotFoundError(
+                    f"'model_state_dict' found, but '{model_complete_path}' is missing; "
+                    "cannot reconstruct model class to load weights."
+                )
+            try:
+                model = torch.load(model_complete_path, map_location=self.device)
+                model.load_state_dict(checkpoint['model_state_dict'])
+                print("Loaded model class from model_complete.pth and applied state_dict from checkpoint.")
+                return model.to(self.device), target_scaling_info
+            except Exception as e:
+                print(f"Failed to load model from '{model_complete_path}' or apply state_dict: {e}")
+                raise
+
+        # Case B: checkpoint is already a full torch model object (rare but possible)
+        if hasattr(checkpoint, "state_dict") and callable(getattr(checkpoint, "state_dict")):
+            print("Checkpoint appears to be a full model object; using it directly.")
+            return checkpoint.to(self.device), target_scaling_info
+
+        # Case C: as a last fallback, try model_complete.pth alone
+        model_complete_path = os.path.join(model_dir, "model_complete.pth")
+        if os.path.exists(model_complete_path):
+            try:
+                model = torch.load(model_complete_path, map_location=self.device)
+                print("Fell back to loading full model from model_complete.pth.")
+                return model.to(self.device), target_scaling_info
+            except Exception as e:
+                print(f"Failed to load full model from '{model_complete_path}': {e}")
+                raise
+
+        # If none of the above succeeded, bail out explicitly
+        raise RuntimeError(
+            f"Could not construct model from '{model_path}'. "
+            "Expected one of: (a) dict with 'model_state_dict' and model_complete.pth present, "
+            "(b) full model object checkpoint, or (c) model_complete.pth present."
+        )
+
+    def _compute_target_scaling_from_data(self):
+        """Compute target scaling parameters from training data if not saved."""
+        print("Computing target scaling parameters from training data...")
+        
+        # Collect all training targets
+        train_targets = []
+        train_dataset = self.data_struct["geometric"]["sgcn_train_data"]
+        
+        for data in train_dataset:
+            if hasattr(data, 'y'):
+                train_targets.append(data.y.item() if data.y.dim() == 0 else data.y.cpu().numpy())
+        
+        train_targets = np.array(train_targets)
+        mean = np.mean(train_targets)
+        std = np.std(train_targets)
+        
+        print(f"Computed target scaling - Mean: {mean:.4f}, Std: {std:.4f}")
+        
+        return {
+            'use_target_scaling': True,
+            'target_scaler_mean': mean,
+            'target_scaler_std': std
+        }
+
     def _inverse_transform_targets(self, scaled_targets):
         """Convert scaled targets back to original scale."""
         if self.target_scaling_info['use_target_scaling']:
