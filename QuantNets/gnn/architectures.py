@@ -155,7 +155,7 @@ class GATv2ConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=4, out_sf=2, hidden_heads=4, bias=True, aggr='add',
                 embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.5,
-                jk_mode='max'):  # Added jumping knowledge mode parameter
+                jk_mode='lstm'):  # Added jumping knowledge mode parameter
         super(GATv2ConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim
