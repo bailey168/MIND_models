@@ -155,7 +155,7 @@ class GATv2ConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=4, out_sf=2, hidden_heads=4, bias=True, aggr='add',
                 embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.5,
-                jk_mode='lstm'):  # Added jumping knowledge mode parameter
+                jk_mode='cat'):  # Added jumping knowledge mode parameter
         super(GATv2ConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim
@@ -169,11 +169,8 @@ class GATv2ConvNet(torch.nn.Module):
             embedding_dim=embedding_dim
         )
 
-        # Add linear projection layer to convert embedding to size 64
-        self.embedding_projection = torch.nn.Linear(embedding_dim, 64)
-
         self.conv_layers = [GATv2Conv(
-                                    in_channels=64,
+                                    in_channels=embedding_dim,
                                     out_channels=64,
                                     heads=4,
                                     bias=bias,
@@ -246,9 +243,6 @@ class GATv2ConvNet(torch.nn.Module):
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
-        
-        # Project embedding to size 64
-        data.x = self.embedding_projection(data.x)
 
         # Store layer representations for jumping knowledge
         layer_outputs = []  # Initialize empty list since we only want conv outputs
