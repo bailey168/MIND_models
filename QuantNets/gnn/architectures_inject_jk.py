@@ -5,6 +5,7 @@ import torch_geometric.nn as pyg_nn
 from torch_geometric.nn import global_mean_pool
 from torch_geometric.nn.aggr import AttentionalAggregation
 from torch_geometric.nn import GraphConv, GATv2Conv
+from torch_geometric.nn import JumpingKnowledge
 
 # GraphConv. 2018 https://arxiv.org/abs/1810.02244
 # class GCNConv(
@@ -123,13 +124,15 @@ class GraphConvNet(torch.nn.Module):
 class GATv2ConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=4, out_sf=2, hidden_heads=4, bias=True, aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.6):
+                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.6,
+                jk_mode='lstm'):
         super(GATv2ConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
         self.include_demo = include_demo
         self.demo_dim = demo_dim
         self.dropout_rate = dropout_rate
+        self.jk_mode = jk_mode
 
         self.node_embedding = torch.nn.Embedding(
             num_embeddings=input_features,
@@ -158,15 +161,10 @@ class GATv2ConvNet(torch.nn.Module):
         ])
 
         if self.include_demo:
-            # Sequential MLPs for demographic data - first layer takes raw demo data, subsequent layers take previous MLP output
-            self.demo_mlps = torch.nn.ModuleList()
-            for i in range(self.layers_num):
-                if i == 0:
-                    # First layer takes raw demographic data
-                    self.demo_mlps.append(torch.nn.Linear(self.demo_dim, 16))
-                else:
-                    # Subsequent layers take output from previous demo MLP (16 dimensions)
-                    self.demo_mlps.append(torch.nn.Linear(16, 16))
+            # 1-layer MLP for demographic data at each layer
+            self.demo_mlps = torch.nn.ModuleList([
+                torch.nn.Linear(self.demo_dim, 16) for _ in range(self.layers_num)
+            ])
 
             # 2-layer MLP to downsize concatenated features
             self.downsize_mlps = torch.nn.ModuleList([
@@ -186,24 +184,31 @@ class GATv2ConvNet(torch.nn.Module):
             torch.nn.ELU() for _ in range(layers_num - 1)
         ])
 
-        # Add AttentionalAggregation instead of global_mean_pool
+        # Add JumpingKnowledge layer
+        self.jump = JumpingKnowledge(mode=jk_mode, channels=hidden_dim, num_layers=layers_num)
+        
+        # Calculate JK output dimension based on mode
+        if jk_mode == 'cat':
+            jk_output_dim = hidden_dim * layers_num
+        else:  # 'lstm' or 'max' mode
+            jk_output_dim = hidden_dim
+
+        # Add AttentionalAggregation - update for JK output dimension
         attention_gate = torch.nn.Sequential(
-            torch.nn.Linear(hidden_dim, hidden_dim // 2),
+            torch.nn.Linear(jk_output_dim, jk_output_dim // 2),
             torch.nn.ELU(),
-            torch.nn.Linear(hidden_dim // 2, 1)
+            torch.nn.Linear(jk_output_dim // 2, 1)
         )
         self.global_attention_pool = AttentionalAggregation(gate_nn=attention_gate)
 
-        self.classifier = torch.nn.Linear(hidden_dim, out_dim)
+        self.classifier = torch.nn.Linear(jk_output_dim, out_dim)
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
         data.x = self.input_projection(data.x)
 
-        # Initialize demo_features for sequential processing
-        demo_features = None
-        if self.include_demo and hasattr(data, 'demographics'):
-            demo_features = data.demographics
+        # Store layer outputs for jumping knowledge
+        layer_outputs = []
 
         for i in range(self.layers_num):
             # Apply graph convolution
@@ -211,9 +216,9 @@ class GATv2ConvNet(torch.nn.Module):
             data.x = self.conv_layers[i](data.x, data.edge_index, edge_attr=edge_attr)
             
             # Only concatenate demographics for layers except the last one
-            if self.include_demo and demo_features is not None and i < self.layers_num - 1:
-                # Process demographics through sequential MLPs
-                demo_features = self.demo_mlps[i](demo_features)
+            if self.include_demo and hasattr(data, 'demographics') and i < self.layers_num - 1:
+                # Process demographics through 1-layer MLP
+                demo_features = self.demo_mlps[i](data.demographics)
                 
                 # Expand demographics to match number of nodes
                 nodes_per_graph = torch.bincount(data.batch)
@@ -229,6 +234,12 @@ class GATv2ConvNet(torch.nn.Module):
             if i < self.layers_num - 1:
                 data.x = self.batch_norms[i](data.x)
                 data.x = self.activations[i](data.x)
+
+            # Store layer output for jumping knowledge
+            layer_outputs.append(data.x)
+
+        # Apply jumping knowledge to combine all layer representations
+        data.x = self.jump(layer_outputs)
 
         # Use attentional aggregation instead of global mean pooling
         graph_features = self.global_attention_pool(data.x, data.batch)
