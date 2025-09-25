@@ -1,5 +1,6 @@
 venv/
 QuantNets/Dataset/
+QuantNets/Experiments/
 QuantNets/__pycache__
 QuantNets/gnn/__pycache__
 QuantNets/gnn/__pycache__/architectures.cpython-312.pyc
