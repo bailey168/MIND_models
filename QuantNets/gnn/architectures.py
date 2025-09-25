@@ -26,14 +26,14 @@ class GraphConvNet(torch.nn.Module):
 
         self.node_embedding = torch.nn.Embedding(
             num_embeddings=input_features,
-            embedding_dim=embedding_dim
+            embedding_dim=8
         )
 
-        # Use consistent dimensions: 64 for all layers (matching GATv2ConvNet)
-        hidden_dim = 64
+        # Use consistent dimensions: 32 for all layers (matching GATv2ConvNet)
+        hidden_dim = 32
 
         # Project embedding to hidden dimension
-        self.input_projection = torch.nn.Linear(embedding_dim, hidden_dim)
+        self.input_projection = torch.nn.Linear(8, hidden_dim)
 
         self.conv_layers = torch.nn.ModuleList([
             GraphConv(
