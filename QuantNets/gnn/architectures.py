@@ -16,7 +16,7 @@ from torch_geometric.nn import GraphConv, GATv2Conv
 class GraphConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=4, out_sf=2, bias=True, aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.1):
+                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.5):
         super(GraphConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
@@ -29,77 +29,81 @@ class GraphConvNet(torch.nn.Module):
             embedding_dim=embedding_dim
         )
 
-        hidden_dim = 2 * model_dim
+        self.conv_layers = [GraphConv(
+                                    in_channels=embedding_dim,
+                                    out_channels=64,
+                                    bias=bias,
+                                    aggr=aggr
+                                    )] + \
+                           [GraphConv(
+                                    in_channels=64,
+                                    out_channels=64,
+                                    bias=bias,
+                                    aggr=aggr
+                                    ) for _ in range(layers_num - 1)]
+        
+        self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
-        # Project embedding to hidden dimension
-        self.input_projection = torch.nn.Linear(embedding_dim, hidden_dim)
-
-        self.conv_layers = torch.nn.ModuleList([
-            GraphConv(
-                in_channels=hidden_dim,
-                out_channels=hidden_dim,
-                bias=bias,
-                aggr=aggr
-            ) for _ in range(self.layers_num)
-        ])
-
-        if self.include_demo:
-            # 1-layer MLP for demographic data at each layer
-            self.demo_mlps = torch.nn.ModuleList([
-                torch.nn.Linear(self.demo_dim, 16) for _ in range(self.layers_num)
-            ])
-            
-            # 2-layer MLP to downsize concatenated features
-            self.downsize_mlps = torch.nn.ModuleList([
-                torch.nn.Sequential(
-                    torch.nn.Linear(hidden_dim + 16, hidden_dim * 2),
-                    torch.nn.LeakyReLU(),
-                    torch.nn.Dropout(self.dropout_rate),
-                    torch.nn.Linear(hidden_dim * 2, hidden_dim)
-                ) for _ in range(self.layers_num)
-            ])
-
+        # Add batch normalization and activation layers
         self.batch_norms = torch.nn.ModuleList([
-            pyg_nn.norm.GraphNorm(hidden_dim) for _ in range(layers_num - 1)
+            pyg_nn.norm.GraphNorm(64) for _ in range(layers_num - 1)
         ])
         self.activations = torch.nn.ModuleList([
-            torch.nn.LeakyReLU() for _ in range(layers_num - 1)
+            torch.nn.ELU() for _ in range(layers_num - 1)
         ])
 
-        self.classifier = torch.nn.Linear(hidden_dim, out_dim)
+        # Use AttentionalAggregation instead of global_mean_pool
+        # Gate network for attention weights
+        attention_gate = torch.nn.Sequential(
+            torch.nn.Linear(64, 32),
+            torch.nn.ELU(),
+            torch.nn.Linear(32, 1)
+        )
+        self.global_attention_pool = AttentionalAggregation(gate_nn=attention_gate)
+
+        # Calculate final feature dimension
+        graph_features_dim = 64
+
+        if self.include_demo:
+            self.demo_projection = torch.nn.Linear(self.demo_dim, 16)
+            total_features_dim = graph_features_dim + 16
+        else:
+            total_features_dim = graph_features_dim
+
+        self.classifier = torch.nn.Sequential(
+            torch.nn.Linear(total_features_dim, 64),
+            torch.nn.BatchNorm1d(64),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(self.dropout_rate),
+            torch.nn.Linear(64, 32),
+            torch.nn.BatchNorm1d(32),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(self.dropout_rate),
+            torch.nn.Linear(32, out_dim)
+        )
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
-        data.x = self.input_projection(data.x)
 
         for i in range(self.layers_num):
-            # Apply graph convolution
             edge_weight = data.edge_attr.squeeze(-1)
             data.x = self.conv_layers[i](data.x, data.edge_index, edge_weight=edge_weight)
-            
-            if self.include_demo and hasattr(data, 'demographics'):
-                # Process demographics through 1-layer MLP
-                demo_features = self.demo_mlps[i](data.demographics)
-                
-                # Expand demographics to match number of nodes
-                nodes_per_graph = torch.bincount(data.batch)
-                demo_expanded = torch.repeat_interleave(demo_features, nodes_per_graph, dim=0)
 
-                # Concatenate graph features with demographic features
-                combined = torch.cat([data.x, demo_expanded], dim=1)
-
-                # Downsize through 2-layer MLP
-                data.x = self.downsize_mlps[i](combined)
-            
-            # Apply normalization and activation (except for last layer)
             if i < self.layers_num - 1:
                 data.x = self.batch_norms[i](data.x)
                 data.x = self.activations[i](data.x)
 
+        # Use attentional aggregation instead of global_mean_pool
+        graph_features = self.global_attention_pool(data.x, data.batch)
 
-        # Global pooling and regression
-        graph_features = global_mean_pool(data.x, data.batch)
-        x = self.classifier(graph_features)
+        # Process demographic features through linear layer and concatenate
+        if self.include_demo and hasattr(data, 'demographics'):
+            demo_features = self.demo_projection(data.demographics)
+            combined_features = torch.cat([graph_features, demo_features], dim=1)
+        else:
+            combined_features = graph_features
+
+        x = self.classifier(combined_features)
 
         # Changed for regression:
         if self.out_dim == 1:
@@ -123,7 +127,7 @@ class GraphConvNet(torch.nn.Module):
 class GATv2ConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=4, out_sf=2, hidden_heads=4, bias=True, aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.6):
+                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.5):
         super(GATv2ConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
@@ -136,103 +140,89 @@ class GATv2ConvNet(torch.nn.Module):
             embedding_dim=embedding_dim
         )
 
-        # Use consistent dimensions: 16 * 4 = 64 for all layers
-        out_channels_per_head = 16   # when concat=True
-        heads = 4
-        hidden_dim = out_channels_per_head * heads
+        self.conv_layers = [GATv2Conv(
+                                    in_channels=embedding_dim,
+                                    out_channels=64,
+                                    heads=4,
+                                    bias=bias,
+                                    edge_dim=1,
+                                    residual=True,
+                                    dropout=self.dropout_rate,
+                                    concat=False
+                                    )] + \
+                           [GATv2Conv(
+                                    in_channels=64,
+                                    out_channels=64,
+                                    heads=4,
+                                    bias=bias,
+                                    edge_dim=1,
+                                    residual=True,
+                                    dropout=self.dropout_rate,
+                                    concat=False
+                                    ) for _ in range(layers_num - 1)]
+        
+        self.conv_layers = torch.nn.ModuleList(self.conv_layers)
 
-        self.input_projection = torch.nn.Linear(embedding_dim, hidden_dim)
-
-        # All conv layers have same input/output dimensions
-        self.conv_layers = torch.nn.ModuleList([
-            GATv2Conv(
-                in_channels=hidden_dim,
-                out_channels=hidden_dim,
-                heads=heads,
-                bias=bias,
-                edge_dim=1,
-                residual=True,
-                dropout=self.dropout_rate,
-                concat=False
-            ) for _ in range(layers_num)
-        ])
-
-        if self.include_demo:
-            # Sequential MLPs for demographic data - first layer takes raw demo data, subsequent layers take previous MLP output
-            self.demo_mlps = torch.nn.ModuleList()
-            for i in range(self.layers_num):
-                if i == 0:
-                    # First layer takes raw demographic data
-                    self.demo_mlps.append(torch.nn.Linear(self.demo_dim, 16))
-                else:
-                    # Subsequent layers take output from previous demo MLP (16 dimensions)
-                    self.demo_mlps.append(torch.nn.Linear(16, 16))
-
-            # 2-layer MLP to downsize concatenated features
-            self.downsize_mlps = torch.nn.ModuleList([
-                torch.nn.Sequential(
-                    torch.nn.Linear(hidden_dim + 16, hidden_dim * 2),
-                    torch.nn.LeakyReLU(),
-                    torch.nn.Linear(hidden_dim * 2, hidden_dim)
-                ) for _ in range(self.layers_num)
-            ])
-
-        # Add batch normalization layers
+        # Add batch normalization and activation layers
         self.batch_norms = torch.nn.ModuleList([
-            pyg_nn.norm.GraphNorm(hidden_dim) for _ in range(layers_num - 1)
+            pyg_nn.norm.GraphNorm(64) for _ in range(layers_num - 1)
         ])
-
         self.activations = torch.nn.ModuleList([
             torch.nn.ELU() for _ in range(layers_num - 1)
         ])
 
-        # Add AttentionalAggregation instead of global_mean_pool
+        # Use AttentionalAggregation instead of GlobalAttention
+        # Gate network for attention weights
         attention_gate = torch.nn.Sequential(
-            torch.nn.Linear(hidden_dim, hidden_dim // 2),
+            torch.nn.Linear(64, 32),
             torch.nn.ELU(),
-            torch.nn.Linear(hidden_dim // 2, 1)
+            torch.nn.Linear(32, 1)
         )
         self.global_attention_pool = AttentionalAggregation(gate_nn=attention_gate)
 
-        self.classifier = torch.nn.Linear(hidden_dim, out_dim)
+        # Calculate final feature dimension
+        graph_features_dim = 64
+
+        if self.include_demo:
+            self.demo_projection = torch.nn.Linear(self.demo_dim, 16)
+            total_features_dim = graph_features_dim + 16
+        else:
+            total_features_dim = graph_features_dim
+
+        self.classifier = torch.nn.Sequential(
+            torch.nn.Linear(total_features_dim, 64),
+            torch.nn.BatchNorm1d(64),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(self.dropout_rate),
+            torch.nn.Linear(64, 32),
+            torch.nn.BatchNorm1d(32),
+            torch.nn.LeakyReLU(),
+            torch.nn.Dropout(self.dropout_rate),
+            torch.nn.Linear(32, out_dim)
+        )
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
-        data.x = self.input_projection(data.x)
-
-        # Initialize demo_features for sequential processing
-        demo_features = None
-        if self.include_demo and hasattr(data, 'demographics'):
-            demo_features = data.demographics
 
         for i in range(self.layers_num):
-            # Apply graph convolution
             edge_attr = data.edge_attr
             data.x = self.conv_layers[i](data.x, data.edge_index, edge_attr=edge_attr)
-            
-            # Only concatenate demographics for layers except the last one
-            if self.include_demo and demo_features is not None and i < self.layers_num - 1:
-                # Process demographics through sequential MLPs
-                demo_features = self.demo_mlps[i](demo_features)
-                
-                # Expand demographics to match number of nodes
-                nodes_per_graph = torch.bincount(data.batch)
-                demo_expanded = torch.repeat_interleave(demo_features, nodes_per_graph, dim=0)
-                
-                # Concatenate graph features with demographic features
-                combined = torch.cat([data.x, demo_expanded], dim=1)
-                
-                # Downsize through 2-layer MLP
-                data.x = self.downsize_mlps[i](combined)
 
-            # Apply normalization (except for last layer)
             if i < self.layers_num - 1:
                 data.x = self.batch_norms[i](data.x)
                 data.x = self.activations[i](data.x)
 
-        # Use attentional aggregation instead of global mean pooling
+        # Use attentional aggregation instead of global attention pooling
         graph_features = self.global_attention_pool(data.x, data.batch)
-        x = self.classifier(graph_features)
+
+        # Process demographic features through linear layer and concatenate
+        if self.include_demo and hasattr(data, 'demographics'):
+            demo_features = self.demo_projection(data.demographics)
+            combined_features = torch.cat([graph_features, demo_features], dim=1)
+        else:
+            combined_features = graph_features
+
+        x = self.classifier(combined_features)
 
         # Changed for regression:
         if self.out_dim == 1:

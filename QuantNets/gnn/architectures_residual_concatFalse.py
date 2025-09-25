@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import torch_geometric.transforms as T
 import torch_geometric.nn as pyg_nn
 from torch_geometric.nn import global_mean_pool
+from torch_geometric.nn.aggr import AttentionalAggregation
 from torch_geometric.nn import GraphConv, GATv2Conv
 
 # GraphConv. 2018 https://arxiv.org/abs/1810.02244
@@ -15,7 +16,7 @@ from torch_geometric.nn import GraphConv, GATv2Conv
 class GraphConvNet(torch.nn.Module):
     def __init__(self, out_dim, input_features, output_channels, layers_num, 
                 model_dim, hidden_sf=4, out_sf=2, bias=True, aggr='add',
-                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.1):
+                embedding_dim=16, include_demo=True, demo_dim=4, dropout_rate=0.6):
         super(GraphConvNet, self).__init__()
         self.layers_num = layers_num
         self.out_dim = out_dim  # Store output dimension
@@ -28,7 +29,7 @@ class GraphConvNet(torch.nn.Module):
             embedding_dim=embedding_dim
         )
 
-        hidden_dim = 2 * model_dim
+        hidden_dim = 64
 
         # Project embedding to hidden dimension
         self.input_projection = torch.nn.Linear(embedding_dim, hidden_dim)
@@ -45,9 +46,19 @@ class GraphConvNet(torch.nn.Module):
         self.batch_norms = torch.nn.ModuleList([
             pyg_nn.norm.GraphNorm(hidden_dim) for _ in range(layers_num - 1)
         ])
+        
         self.activations = torch.nn.ModuleList([
-            torch.nn.LeakyReLU() for _ in range(layers_num - 1)
+            torch.nn.ELU() for _ in range(layers_num - 1)
         ])
+
+        # Use AttentionalAggregation instead of global_mean_pool
+        # Gate network for attention weights
+        attention_gate = torch.nn.Sequential(
+            torch.nn.Linear(hidden_dim, 32),
+            torch.nn.ELU(),
+            torch.nn.Linear(32, 1)
+        )
+        self.global_attention_pool = AttentionalAggregation(gate_nn=attention_gate)
 
         # Calculate final feature dimension
         graph_features_dim = hidden_dim
@@ -59,15 +70,15 @@ class GraphConvNet(torch.nn.Module):
             total_features_dim = graph_features_dim
 
         self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(total_features_dim, model_dim * 2),
-            torch.nn.BatchNorm1d(model_dim * 2),
+            torch.nn.Linear(total_features_dim, 64),
+            torch.nn.BatchNorm1d(64),
             torch.nn.LeakyReLU(),
             torch.nn.Dropout(self.dropout_rate),
-            torch.nn.Linear(model_dim * 2, model_dim),
-            torch.nn.BatchNorm1d(model_dim),
+            torch.nn.Linear(64, 32),
+            torch.nn.BatchNorm1d(32),
             torch.nn.LeakyReLU(),
             torch.nn.Dropout(self.dropout_rate),
-            torch.nn.Linear(model_dim, out_dim)
+            torch.nn.Linear(32, out_dim)
         )
 
     def forward(self, data):
@@ -88,7 +99,8 @@ class GraphConvNet(torch.nn.Module):
                 data.x = self.batch_norms[i](data.x)
                 data.x = self.activations[i](data.x)
 
-        graph_features = global_mean_pool(data.x, data.batch)
+        # Use attentional aggregation instead of global_mean_pool
+        graph_features = self.global_attention_pool(data.x, data.batch)
 
         # Process demographic features through linear layer and concatenate
         if self.include_demo and hasattr(data, 'demographics'):
@@ -141,8 +153,7 @@ class GATv2ConvNet(torch.nn.Module):
 
         self.input_projection = torch.nn.Linear(embedding_dim, hidden_dim)
 
-
-        # All conv layers have same input/output dimensions for residual connections
+        # Simplified: All conv layers are identical since input/output dims are the same (64)
         self.conv_layers = torch.nn.ModuleList([
             GATv2Conv(
                 in_channels=hidden_dim,
@@ -156,14 +167,23 @@ class GATv2ConvNet(torch.nn.Module):
             ) for _ in range(layers_num)
         ])
 
-        # Add batch normalization layers
+        # Add batch normalization and activation layers
         self.batch_norms = torch.nn.ModuleList([
             pyg_nn.norm.GraphNorm(hidden_dim) for _ in range(layers_num - 1)
         ])
-
+        
         self.activations = torch.nn.ModuleList([
             torch.nn.ELU() for _ in range(layers_num - 1)
         ])
+
+        # Use AttentionalAggregation instead of global_mean_pool
+        # Gate network for attention weights
+        attention_gate = torch.nn.Sequential(
+            torch.nn.Linear(hidden_dim, 32),
+            torch.nn.ELU(),
+            torch.nn.Linear(32, 1)
+        )
+        self.global_attention_pool = AttentionalAggregation(gate_nn=attention_gate)
 
         # Calculate final feature dimension
         graph_features_dim = hidden_dim
@@ -204,7 +224,8 @@ class GATv2ConvNet(torch.nn.Module):
                 data.x = self.batch_norms[i](data.x)
                 data.x = self.activations[i](data.x)
 
-        graph_features = global_mean_pool(data.x, data.batch)
+        # Use attentional aggregation instead of global_mean_pool
+        graph_features = self.global_attention_pool(data.x, data.batch)
 
         # Process demographic features through linear layer and concatenate
         if self.include_demo and hasattr(data, 'demographics'):
