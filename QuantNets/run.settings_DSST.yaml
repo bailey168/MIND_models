@@ -12,14 +12,13 @@ grid_search:
     # weight_decays: [0.1]
     weight_decays: [0.01]
     layers_nums: [3]
-# Learning rates - regression typically needs different rates than classification
+
 lrs:
   dsst_custom:
     - 0.001
   gf_custom:
     - 0.001
 
-# Epochs - regression may need more epochs to converge
 epochs:
   dsst_custom:
     - 500

@@ -79,13 +79,13 @@ def generate_grid_search_configs(run_config, splits_config, datasets_config):
     configs = []
     config_idx = 0
     
-    # Generate all combinations - now including layers_num
+    # Generate all combinations
     for dropout_rate, weight_decay, layers_num in product(dropout_rates, weight_decays, layers_nums):
         # Create modified dataset config
         dataset_config = base_dataset.copy()
         dataset_config['dropout_rate'] = dropout_rate
         dataset_config['weight_decay'] = weight_decay
-        dataset_config['layers_num'] = layers_num  # Add layers_num to dataset config
+        dataset_config['layers_num'] = layers_num
         
         # Create experiment configuration
         config = {

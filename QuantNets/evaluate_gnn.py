@@ -5,9 +5,8 @@ import numpy as np
 import pickle
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
-# Set matplotlib backend for headless environments
 import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 # Add the current directory to sys.path

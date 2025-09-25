@@ -1,4 +1,3 @@
-# Main class called to train different models from CNN, QGCN, QGRN, SGCN for regression tasks
 import shutil
 import os
 import sys

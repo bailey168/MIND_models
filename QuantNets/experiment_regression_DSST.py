@@ -52,9 +52,9 @@ class ExperimentRegression:
                 walk_clock_num_runs = 10,
                 id = None,
                 early_stopping_config = None,
-                use_target_scaling = True):  # Add target scaling option
+                use_target_scaling = True):  # Added target scaling option
         
-        # Controls whether we want to print runtime per model
+        # Controls whether to print runtime per model
         self.profile_run = profile_run
         self.walk_clock_num_runs = walk_clock_num_runs
 
