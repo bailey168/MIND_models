@@ -9,7 +9,8 @@ grid_search:
     # weight_decays: [0.001, 0.01, 0.1]
     # layers_nums: [2, 3, 4]
     # dropout_rates: [0.5]
-    weight_decays: [0.1]
+    # weight_decays: [0.1]
+    weight_decays: [0.01]
     layers_nums: [3]
 # Learning rates - regression typically needs different rates than classification
 lrs:
