@@ -21,7 +21,7 @@ All models are trained to predict performance on Fluid Intelligence, Paired Asso
 ## Graph Neural Networks
 - **`QuantNets`**: Scripts and config files for building and experimenting various GNN architectures (GCNs, GATs, Quantized GCNs)
   - Preprocessing scripts for converting connectivity matrices into graphs (PyTorch Geometric), standardization, sparsification, and dataset splitting
-  - Architecture configuration of different GNN types and different methods of injecting demographic data into models
+  - Architecture configurations of different GNN types and different methods of injecting demographic data into models
   - Configurations of model hyperparameters and sizing
   - Experimental setup to train multiple model configurations and track evaluation results
 
