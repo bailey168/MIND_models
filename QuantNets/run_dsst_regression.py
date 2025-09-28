@@ -320,7 +320,8 @@ def run_grid_search(model_type, run_evaluation=True, use_target_scaling=True):
                 'saved_model_epoch': saved_metrics.get('epoch', 0),
                 'saved_model_train_mse': saved_metrics.get('train_mse', float('inf')),
                 'saved_model_test_mse': saved_metrics.get('test_mse', float('inf')),
-                'saved_model_train_r2': saved_metrics.get('train_r2', 0.0)
+                'saved_model_train_r2': saved_metrics.get('train_r2', 0.0),
+                'saved_model_test_r2': saved_metrics.get('test_r2', 0.0)
             })
             
         except Exception as e:
@@ -339,7 +340,7 @@ def run_grid_search(model_type, run_evaluation=True, use_target_scaling=True):
         train_mse = f"{result['saved_model_train_mse']:.5f}" if result['saved_model_train_mse'] != float('inf') else 'N/A'
         test_mse = f"{result['saved_model_test_mse']:.5f}" if result['saved_model_test_mse'] != float('inf') else 'N/A'
         train_r2 = f"{result['saved_model_train_r2']:.4f}" if result['saved_model_train_r2'] != 0.0 else 'N/A'
-        test_r2 = f"{result['saved_model_test_r2']:.4f}" if result.get('saved_model_test_r2', 0.0) != 0.0 else 'N/A'
+        test_r2 = f"{result['saved_model_test_r2']:.4f}" if result['saved_model_test_r2'] != 0.0 else 'N/A'
         
         print(f"{result['config_idx'] + 1:<8} {result['dropout_rate']:<10} {result['weight_decay']:<12} {result['layers_num']:<8} {result['lr']:<10} {result['epochs']:<8} {result['scheduler']:<12} {train_mse:<12} {test_mse:<12} {train_r2:<10} {test_r2:<10}")
     
