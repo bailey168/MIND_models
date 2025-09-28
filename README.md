@@ -1,6 +1,7 @@
-# Cognition prediction using ML and DL models trained on Brain MRI data
+# Cognitive performance prediction using ML and DL models trained on Brain MRI data
 
 Repository of code and resources for processing, modelling, and analysis of MIND and other brain MRI modalities, with a focus on predictive machine learning (ElasticNet regression, PLS regression, XGBoost) and deep learning (GNNs) modelling. Main analyses are performed on UK Biobank dataset.
+<img width="8181" height="4583" alt="MScAC Aria Poster" src="https://github.com/user-attachments/assets/2d38876f-dc90-47b8-8ee7-1b0b34e73ee2" />
 
 ## Data Wrangling + MRI Processing
 1. **`MIND_processing`**: Handling and preprocessing Morphometric INverse Divergence (MIND) structural connectivity matrices
@@ -12,21 +13,21 @@ Repository of code and resources for processing, modelling, and analysis of MIND
 
 
 ## Machine Learning Models
-All models are trained to predict performance on Fluid Intelligence, Paired Associate Learning, Digit Symbol Substitution Test, using Alphanumeric Trail Making Test using demographic data, MIND, functional connectivity, and cortical thickness. Models are optimized using nested 10-fold cross validation and grid search. Model weights and SHAP scores are analyzed for interpretability
-1. **`matlab_plsregression`**: MATLAB scripts for performing **Partial Least Squares (PLS)** regression; includes permutation testing and bootstrapping (models trained on all predictors as well as models trained on neuroimaging data with demographic variables regressed out)
-2. **`models_plsregression`**: Python scripts and notebooks for PLS regression modelling and analysis
+All models are trained to predict performance on Fluid Intelligence, Paired Associate Learning, Digit Symbol Substitution Test, and Alphanumeric Trail Making Test using demographic data, MIND, functional connectivity, and cortical thickness. Models are optimized using nested 10-fold cross-validation and grid search. To assess the role of demographic variables, models are trained both on the full predictor set and on neuroimaging predictors with demographic effects regressed out. Model weights and SHAP scores are analyzed for interpretability
+1. **`matlab_plsregression`**: MATLAB scripts for **Partial Least Squares (PLS)** regression, including permutation testing and bootstrapping
+2. **`models_plsregression`**: Python scripts and notebooks for **PLS regression** modelling and analysis
 3. **`models_xgboost`**: Scripts and notebooks for **XGBoost** modelling and analysis
-4. **`models_elasticnet`**: Scripts and notebooks for Elastic Net regression modelling and analysis (models trained on all predictors as well as models trained on neuroimaging data with demographic variables regressed out)
+4. **`models_elasticnet`**: Scripts and notebooks for **Elastic Net regression** modelling and analysis
 
 ## Graph Neural Networks
-- **`QuantNets`**: Scripts and config files for building and experimenting various GNN architectures **(Graph Convolution Network (GCN), Graph Attention Networks (GAT), Quantized Graph Convolutional Network (QGRN))**
+- **`QuantNets`**: Scripts and config files for building and experimenting with various GNN architectures **(Graph Convolution Network (GCN), Graph Attention Networks (GAT), Quantized Graph Convolutional Network (QGRN))**
   - Preprocessing scripts for converting connectivity matrices into graphs (PyTorch Geometric), standardization, sparsification, and dataset splitting
   - Architecture configurations of different GNN types and different methods of injecting demographic data into models
-  - Configurations of model hyperparameters and sizing (# of layers, dropout, weight decay, learning rate, learning rate schedulers, activation functions, pooling layers, normalization layers)
+  - Configurations of model hyperparameters and sizing (# of layers, dropout, weight decay, learning rate, learning rate schedulers, activation functions, pooling layers, normalization layers, embedding dimensions, hidden dimensions)
   - Experimental setup to train multiple model configurations and track evaluation results
 
 
-## Utils and Micellaneous
+## Utils and Miscellaneous
 1. **`miscellaneous`**: Miscellaneous scripts and resources
 2. **`region_names`**: UK Biobank variable names and brain region names
 3. **`visualization`**: Visualization of data and modelling results
