@@ -5,13 +5,13 @@
 # Grid search parameters - all combinations will be tested
 grid_search:
   gf_custom:
-    dropout_rates: [0.3, 0.5, 0.7]
-    weight_decays: [0.001, 0.01, 0.1]
-    layers_nums: [2, 3, 4]
-    # dropout_rates: [0.5]
-    # weight_decays: [0.1]
+    # dropout_rates: [0.3, 0.5, 0.7]
+    # weight_decays: [0.001, 0.01, 0.1]
+    # layers_nums: [2]
+    dropout_rates: [0.5]
+    weight_decays: [0.1]
     # weight_decays: [0.01]
-    # layers_nums: [3]
+    layers_nums: [3]
 
 lrs:
   dsst_custom:
