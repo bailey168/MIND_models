@@ -223,56 +223,45 @@ class ModelEvaluator:
                         predictions_scaled = predictions_scaled.unsqueeze(0)
                     elif predictions_scaled.dim() == 2 and predictions_scaled.size(1) == 1:
                         predictions_scaled = predictions_scaled.squeeze(-1)
-        
-                predictions_scaled_np = predictions_scaled.cpu().numpy()
-                targets_np = data.y.cpu().numpy()  # These are in ORIGINAL scale!
-                
-                # Debug prints for first batch
-                if batch_idx == 0:
-                    print(f"First batch debug:")
-                    print(f"  Predictions (scaled): mean={predictions_scaled_np.mean():.4f}, std={predictions_scaled_np.std():.4f}")
-                    print(f"  Targets (original): mean={targets_np.mean():.4f}, std={targets_np.std():.4f}")
+
+            predictions_scaled_np = predictions_scaled.cpu().numpy()
+            targets_np = data.y.cpu().numpy()  # These are in ORIGINAL scale!
             
-                # Convert predictions back to original scale
-                predictions_orig = self._inverse_transform_targets(predictions_scaled_np)
-                
-                # Targets are already in original scale - no transformation needed!
-                targets_orig = targets_np
-                
-                # Debug prints for first batch  
-                if batch_idx == 0:
-                    print(f"  Predictions (original): mean={predictions_orig.mean():.4f}, std={predictions_orig.std():.4f}")
-                    print(f"  Targets (original - no transform): mean={targets_orig.mean():.4f}, std={targets_orig.std():.4f}")
+            # Convert predictions back to original scale
+            predictions_orig = self._inverse_transform_targets(predictions_scaled_np)
             
-                # Collect results in original scale
-                all_predictions_orig.append(predictions_orig)
-                all_true_values_orig.append(targets_orig)
-        
-        # Concatenate all results
-        predictions = np.concatenate(all_predictions_orig)
-        true_values = np.concatenate(all_true_values_orig)
-        
-        # Calculate metrics in original scale
-        r2 = r2_score(true_values, predictions)
-        mse = mean_squared_error(true_values, predictions)
-        rmse = np.sqrt(mse)
-        mae = mean_absolute_error(true_values, predictions)
-        correlation = np.corrcoef(true_values, predictions)[0, 1]
-        
-        results = {
-            'dataset_type': dataset_type,
-            'n_samples': len(predictions),
-            'r2_score': r2,
-            'mse': mse,
-            'rmse': rmse,
-            'mae': mae,
-            'correlation': correlation,
-            'predictions': predictions,
-            'true_values': true_values,
-            'target_scaling_used': self.target_scaling_info['use_target_scaling']
-        }
-        
-        return results
+            # Targets are already in original scale - no transformation needed!
+            targets_orig = targets_np
+
+            # Collect results in original scale
+            all_predictions_orig.append(predictions_orig)
+            all_true_values_orig.append(targets_orig)
+
+    # Concatenate all results
+    predictions = np.concatenate(all_predictions_orig)
+    true_values = np.concatenate(all_true_values_orig)
+    
+    # Calculate metrics in original scale
+    r2 = r2_score(true_values, predictions)
+    mse = mean_squared_error(true_values, predictions)
+    rmse = np.sqrt(mse)
+    mae = mean_absolute_error(true_values, predictions)
+    correlation = np.corrcoef(true_values, predictions)[0, 1]
+    
+    results = {
+        'dataset_type': dataset_type,
+        'n_samples': len(predictions),
+        'r2_score': r2,
+        'mse': mse,
+        'rmse': rmse,
+        'mae': mae,
+        'correlation': correlation,
+        'predictions': predictions,
+        'true_values': true_values,
+        'target_scaling_used': self.target_scaling_info['use_target_scaling']
+    }
+    
+    return results
     
     def plot_predictions(self, results, save_path=None, show_plot=False):
         """

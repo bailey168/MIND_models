@@ -1108,10 +1108,10 @@ class ExperimentRegression:
                 model_type = "SGCN"
             elif self.qgcn_model_exists and self.qgcn_specific_run_dir:
                 model_path = os.path.join(self.qgcn_specific_run_dir, "model.pth")
-                model_dir = self.qgcn_specific_run_dir
+                model_dir = self.qgcn_specific_run_dir  
                 model_type = "QGCN"
             else:
-                print("No valid model found for evaluation")
+                print("No trained models found for evaluation")
                 return None
             
             if not os.path.exists(model_path):
@@ -1139,6 +1139,23 @@ class ExperimentRegression:
             print(f"\nEvaluating {model_type} model on training set...")
             train_results = evaluator.evaluate_dataset('train', batch_size=64)
             evaluator.print_evaluation_summary(train_results)
+            
+            # Print comprehensive comparison
+            print(f"\n{'='*80}")
+            print(f"COMPREHENSIVE DATASET COMPARISON")
+            print(f"{'='*80}")
+            print(f"TRAINING SET:")
+            print(f"  True values:   mean={train_results['true_values'].mean():.4f}, std={train_results['true_values'].std():.4f}, n={len(train_results['true_values'])}")
+            print(f"  Predictions:   mean={train_results['predictions'].mean():.4f}, std={train_results['predictions'].std():.4f}")
+            print(f"  R² Score:      {train_results['r2_score']:.4f}")
+            print(f"  RMSE:          {train_results['rmse']:.4f}")
+            print()
+            print(f"TEST SET:")
+            print(f"  True values:   mean={test_results['true_values'].mean():.4f}, std={test_results['true_values'].std():.4f}, n={len(test_results['true_values'])}")
+            print(f"  Predictions:   mean={test_results['predictions'].mean():.4f}, std={test_results['predictions'].std():.4f}")
+            print(f"  R² Score:      {test_results['r2_score']:.4f}")
+            print(f"  RMSE:          {test_results['rmse']:.4f}")
+            print(f"{'='*80}")
             
             # Generate plots
             print(f"\nGenerating evaluation plots...")
