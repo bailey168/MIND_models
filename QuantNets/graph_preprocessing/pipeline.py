@@ -5,7 +5,7 @@ from training_ids import create_training_ids_file, validate_training_ids_file, v
 from matrix_to_graph_parallelized import process_all_matrices_with_standardization, process_all_matrices
 from create_dataset import process_custom_graph_dataset
 from config import (DATA_DIR, OUTPUT_DIR, CSV_FILE, TRAINING_IDS_FILE, 
-                   GRAPH_DIR, MATRIX_DIR, DATA_COL, EID_COL, DATASET_NAME,
+                   GRAPH_DIR, MATRIX_DIR, PROCESSED_DIR, DATA_COL, EID_COL, DATASET_NAME,  # Add PROCESSED_DIR
                    TRAIN_RATIO, RANDOM_SEED, KEEP_PERCENT, KEEP_SELF_LOOPS,
                    USE_EDGE_STANDARDIZATION)
 
@@ -74,7 +74,7 @@ def run_pipeline():
         data_col=DATA_COL,
         graph_dir=GRAPH_DIR,
         csv_file=CSV_FILE,
-        output_dir=OUTPUT_DIR,
+        output_dir=PROCESSED_DIR,
         dataset_name=DATASET_NAME,
         train_ratio=TRAIN_RATIO,
         random_seed=RANDOM_SEED

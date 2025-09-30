@@ -160,18 +160,18 @@ def process_custom_graph_dataset(data_col: str, graph_dir: str, csv_file: str, o
     return final_output_dir
 
 if __name__ == "__main__":
-    data_col = "20016-2.0"
-    graph_dir = "/scratch/bng/cartbind/data/FC_graphs/raw/GF30"
-    csv_file = "/scratch/bng/cartbind/data/ukb_master_GF_no_outliers.csv"
-    output_dir = "/scratch/bng/cartbind/data/FC_graphs/processed/GF30"
-    dataset_name = "custom_dataset_selfloops_True_edgeft_None_norm_True"
-
+    from config import (DATA_COL, GRAPH_DIR, CSV_FILE, OUTPUT_DIR, DATASET_NAME, 
+                       TRAIN_RATIO, RANDOM_SEED, EDGE_PERCENT_STR)
+    
+    # Make output_dir dynamic to match the edge percentage
+    output_dir = os.path.join(OUTPUT_DIR, f"FC_graphs/processed/GF{EDGE_PERCENT_STR}")
+    
     result_dir = process_custom_graph_dataset(
-        data_col=data_col,
-        graph_dir=graph_dir,
-        csv_file=csv_file,
+        data_col=DATA_COL,
+        graph_dir=GRAPH_DIR,
+        csv_file=CSV_FILE,
         output_dir=output_dir,
-        dataset_name=dataset_name,
-        train_ratio=0.8,
-        random_seed=42
+        dataset_name=DATASET_NAME,
+        train_ratio=TRAIN_RATIO,
+        random_seed=RANDOM_SEED
     )
