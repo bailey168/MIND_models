@@ -17,7 +17,7 @@ EID_COL = "eid"
 # Parameters
 TRAIN_RATIO = 0.8
 RANDOM_SEED = 42
-KEEP_PERCENT = 1.0
+KEEP_PERCENT = 0.15
 KEEP_SELF_LOOPS = True
 
 # Standardization control
