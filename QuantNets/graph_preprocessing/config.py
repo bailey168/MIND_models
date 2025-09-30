@@ -1,7 +1,20 @@
 import os
+import argparse
 
 dataset_dict = {"GF": "20016-2.0", "PAL": "20197-2.0", "DSST": "23324-2.0", "TMT": "trailmaking_score"}
-DATASET = "DSST"
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Graph preprocessing pipeline')
+    parser.add_argument('--dataset', choices=['GF', 'PAL', 'DSST', 'TMT'], default='DSST',
+                       help='Dataset to process (default: DSST)')
+    parser.add_argument('--keep-percent', type=float, default=0.15,
+                       help='Percentage of edges to keep (default: 0.15)')
+    return parser.parse_args()
+
+# Parse command line arguments
+args = parse_args()
+DATASET = args.dataset
+KEEP_PERCENT = args.keep_percent
 
 # Paths
 DATA_DIR = "/scratch/bng/cartbind/data"
@@ -17,7 +30,6 @@ EID_COL = "eid"
 # Parameters
 TRAIN_RATIO = 0.8
 RANDOM_SEED = 42
-KEEP_PERCENT = 0.15
 KEEP_SELF_LOOPS = True
 
 # Standardization control
