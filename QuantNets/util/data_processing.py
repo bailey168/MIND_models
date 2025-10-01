@@ -231,54 +231,54 @@ class CustomImageGraphDataset(RawDataset):
 #       Process Raw MNIST Data and Convert to Graph                  #
 #                                                                    #
 ######################################################################
-def read_cached_graph_dataset( num_train, num_test, dataset_name, parent_dir = None):
-  # Assertion on dataset splits
-  assert num_train != None and isinstance(num_train, int)
-  assert num_test != None and isinstance(num_test, int)
-  
-  # Get data file path
-  curr_path = parent_dir or os.path.dirname(os.path.realpath('__file__'))
-  base_path = os.path.join(curr_path, "Dataset", "RawGraph")
-  if not os.path.exists(base_path):
-    print("Dataset with name: {} doesn't exist".format(dataset_name))
-    quit()
-  
-  # get the directory name
-  dir_name = "train_{}_test_{}".format(num_train, num_test)
-  full_dirpath = os.path.join(base_path, dir_name)
-  if not os.path.exists(full_dirpath):
-    print("Dataset for num_train={}, num_test={} was not generated".format(num_train, num_test))
-    quit()
+def read_cached_graph_dataset(num_train, num_test, dataset_name, parent_dir=None, sparsity=100):
+    # Assertion on dataset splits
+    assert num_train != None and isinstance(num_train, int)
+    assert num_test != None and isinstance(num_test, int)
+    
+    # Get data file path with sparsity-specific directory
+    curr_path = parent_dir or os.path.dirname(os.path.realpath('__file__'))
+    base_path = os.path.join(curr_path, f"Dataset{sparsity}", "RawGraph")  # Use Dataset{sparsity} instead of Dataset
+    if not os.path.exists(base_path):
+        print(f"Dataset directory with sparsity {sparsity} doesn't exist: {base_path}")
+        quit()
+    
+    # get the directory name
+    dir_name = "train_{}_test_{}".format(num_train, num_test)
+    full_dirpath = os.path.join(base_path, dir_name)
+    if not os.path.exists(full_dirpath):
+        print(f"Dataset for num_train={num_train}, num_test={num_test} with sparsity {sparsity} was not generated")
+        quit()
 
-  # create the dataset name ...
-  full_path = os.path.join(full_dirpath, dataset_name + ".pkl")
-  assert full_path != None and full_path != "", "Full Path to dataset cannot be None/''"
-  print(full_path)
+    # create the dataset name ...
+    full_path = os.path.join(full_dirpath, dataset_name + ".pkl")
+    assert full_path != None and full_path != "", "Full Path to dataset cannot be None/''"
+    print(f"Loading dataset from: {full_path}")
 
-  # confirm that full_path exists ...
-  if not os.path.exists(full_path):
-    print("Dataset with name: {} doesn't exist".format(dataset_name))
-    quit()
+    # confirm that full_path exists ...
+    if not os.path.exists(full_path):
+        print(f"Dataset with name: {dataset_name} and sparsity {sparsity} doesn't exist at: {full_path}")
+        quit()
 
-  # struct to return ...
-  struct = {
-      "raw": {
-          "x_train_data": [],
-          "y_train_data": [],
-          "x_test_data" : [],
-          "y_test_data" : []
-      },
-      "geometric": {
-          "qgcn_train_data":  [],
-          "qgcn_test_data" : [],
-          "sgcn_train_data": [],
-          "sgcn_test_data" :  [],
-      }
-  }
+    # struct to return ...
+    struct = {
+        "raw": {
+            "x_train_data": [],
+            "y_train_data": [],
+            "x_test_data" : [],
+            "y_test_data" : []
+        },
+        "geometric": {
+            "qgcn_train_data":  [],
+            "qgcn_test_data" : [],
+            "sgcn_train_data": [],
+            "sgcn_test_data" :  [],
+        }
+    }
 
-  # read data from disk ...
-  with open(full_path, "rb") as f:
-    struct = pickle.load(f)
+    # read data from disk ...
+    with open(full_path, "rb") as f:
+      struct = pickle.load(f)
 
-  # return the struct ...
-  return struct
+    # return the struct ...
+    return struct

@@ -52,18 +52,20 @@ class ExperimentRegression:
                 walk_clock_num_runs = 10,
                 id = None,
                 early_stopping_config = None,
-                use_target_scaling = True):  # Added target scaling option
+                use_target_scaling = True,
+                sparsity = 100):
         
         # Controls whether to print runtime per model
         self.profile_run = profile_run
         self.walk_clock_num_runs = walk_clock_num_runs
 
-        # Load the dataset from cached graph files
+        # Load the dataset from cached graph files with sparsity
         data_struct = read_cached_graph_dataset(
             num_train=num_train, 
             num_test=num_test, 
             dataset_name=dataset_name, 
-            parent_dir=base_path
+            parent_dir=base_path,
+            sparsity=sparsity  # Pass sparsity to data loading function
         )
 
         # Save the references to the datasets
