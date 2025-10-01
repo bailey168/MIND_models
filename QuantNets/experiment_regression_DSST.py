@@ -55,6 +55,9 @@ class ExperimentRegression:
                 use_target_scaling = True,
                 sparsity = 100):
         
+        # Store sparsity as instance variable
+        self.sparsity = sparsity
+        
         # Controls whether to print runtime per model
         self.profile_run = profile_run
         self.walk_clock_num_runs = walk_clock_num_runs
@@ -217,8 +220,8 @@ class ExperimentRegression:
         self.sgcn_model_scheduler = None
         
         # Configure schedulers based on optim_params
-        scheduler_type = optim_params.get("scheduler", "step") if optim_params else "step"
-        scheduler_params = optim_params.get("scheduler_params", {}) if optim_params else {}
+        scheduler_type = optim_params["scheduler"]
+        scheduler_params = optim_params["scheduler_params"]
         
         if self.cnn_model_exists:
             self.cnn_model_scheduler = self._create_scheduler(self.cnn_model_optimizer, scheduler_type, scheduler_params)
@@ -229,16 +232,16 @@ class ExperimentRegression:
 
         # Add early stopping configuration with R² support
         self.early_stopping_config = early_stopping_config or {}
-        self.use_early_stopping = self.early_stopping_config.get('enabled', False)
+        self.use_early_stopping = self.early_stopping_config['enabled']
         
         if self.use_early_stopping:
             # Initialize early stopping for each model
-            es_patience = self.early_stopping_config.get('patience', 20)
-            es_min_delta = self.early_stopping_config.get('min_delta', 0.0001)
-            es_restore_weights = self.early_stopping_config.get('restore_best_weights', True)
-            es_verbose = self.early_stopping_config.get('verbose', True)
-            es_monitor = self.early_stopping_config.get('monitor', 'loss')  # 'loss' or 'r2'
-            
+            es_patience = self.early_stopping_config['patience']
+            es_min_delta = self.early_stopping_config['min_delta']
+            es_restore_weights = self.early_stopping_config['restore_best_weights']
+            es_verbose = self.early_stopping_config['verbose']
+            es_monitor = self.early_stopping_config['monitor']
+
             self.qgcn_early_stopping = EarlyStopping(
                 patience=es_patience,
                 min_delta=es_min_delta,
@@ -275,41 +278,41 @@ class ExperimentRegression:
         if scheduler_type == "step":
             return torch.optim.lr_scheduler.StepLR(
                 optimizer,
-                step_size=scheduler_params.get("step_size", 100),
-                gamma=scheduler_params.get("gamma", 0.5)
+                step_size=scheduler_params["step_size"],
+                gamma=scheduler_params["gamma"]
             )
         elif scheduler_type == "multistep":
             return torch.optim.lr_scheduler.MultiStepLR(
                 optimizer,
-                milestones=scheduler_params.get("milestones", [150, 300]),
-                gamma=scheduler_params.get("gamma", 0.1)
+                milestones=scheduler_params["milestones"],
+                gamma=scheduler_params["gamma"]
             )
         elif scheduler_type == "exponential":
             return torch.optim.lr_scheduler.ExponentialLR(
                 optimizer,
-                gamma=scheduler_params.get("gamma", 0.95)
+                gamma=scheduler_params["gamma"]
             )
         elif scheduler_type == "cosine":
             return torch.optim.lr_scheduler.CosineAnnealingLR(
                 optimizer,
-                T_max=scheduler_params.get("T_max", 500),
-                eta_min=scheduler_params.get("eta_min", 1e-6)
+                T_max=scheduler_params["T_max"],
+                eta_min=scheduler_params["eta_min"]
             )
         elif scheduler_type == "plateau":
             return torch.optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer,
                 mode='min',
-                factor=scheduler_params.get("factor", 0.5),
-                patience=scheduler_params.get("patience", 10),
-                min_lr=scheduler_params.get("min_lr", 1e-6)
+                factor=scheduler_params["factor"],
+                patience=scheduler_params["patience"],
+                min_lr=scheduler_params["min_lr"]
             )
         elif scheduler_type == "warmup_cosine":
             # Linear warmup followed by cosine decay
-            num_warmup_steps = scheduler_params.get("num_warmup_steps", 50)
-            num_training_steps = scheduler_params.get("num_training_steps", 500)
-            num_cycles = scheduler_params.get("num_cycles", 0.5)
-            last_epoch = scheduler_params.get("last_epoch", -1)
-            
+            num_warmup_steps = scheduler_params["num_warmup_steps"]
+            num_training_steps = scheduler_params["num_training_steps"]
+            num_cycles = scheduler_params["num_cycles"]
+            last_epoch = scheduler_params["last_epoch"]
+
             return get_cosine_schedule_with_warmup(
                 optimizer=optimizer,
                 num_warmup_steps=num_warmup_steps,
@@ -493,7 +496,7 @@ class ExperimentRegression:
                     f.write(f"Early stopped: {'Yes' if self.qgcn_early_stopping.early_stop else 'No'}\n")
                     if hasattr(self.qgcn_early_stopping, 'best_epoch'):
                         f.write(f"Best model epoch: {getattr(self.qgcn_early_stopping, 'best_epoch', 'unknown')}\n")
-                        f.write(f"Monitor metric: {self.early_stopping_config.get('monitor', 'loss')}\n")
+                        f.write(f"Monitor metric: {self.early_stopping_config['monitor']}\n")
 
         if self.sgcn_model_exists:
             # Same logic for SGCN
@@ -550,7 +553,7 @@ class ExperimentRegression:
                     f.write(f"Early stopped: {'Yes' if self.sgcn_early_stopping.early_stop else 'No'}\n")
                     if hasattr(self.sgcn_early_stopping, 'best_epoch'):
                         f.write(f"Best model epoch: {getattr(self.sgcn_early_stopping, 'best_epoch', 'unknown')}\n")
-                        f.write(f"Monitor metric: {self.early_stopping_config.get('monitor', 'loss')}\n")
+                        f.write(f"Monitor metric: {self.early_stopping_config['monitor']}\n")
 
     def __cache_results(self, train_qgcn_loss_array, train_sgcn_loss_array, 
                         train_qgcn_mse_array, train_sgcn_mse_array,
@@ -764,7 +767,7 @@ class ExperimentRegression:
             }
             torch.save(sgcn_save_dict, os.path.join(self.sgcn_specific_run_dir, "model.pth"))
             if self.use_early_stopping:
-                monitor_metric = self.early_stopping_config.get('monitor', 'loss')
+                monitor_metric = self.early_stopping_config['monitor']
                 print(f"✓ Saved best SGCN model from epoch {current_epoch} (best {monitor_metric})")
             else:
                 print(f"✓ Saved SGCN model from epoch {current_epoch}")
@@ -791,7 +794,7 @@ class ExperimentRegression:
             }
             torch.save(qgcn_save_dict, os.path.join(self.qgcn_specific_run_dir, "model.pth"))
             if self.use_early_stopping:
-                monitor_metric = self.early_stopping_config.get('monitor', 'loss')
+                monitor_metric = self.early_stopping_config['monitor']
                 print(f"✓ Saved best QGCN model from epoch {current_epoch} (best {monitor_metric})")
             else:
                 print(f"✓ Saved QGCN model from epoch {current_epoch}")
@@ -889,9 +892,9 @@ class ExperimentRegression:
         print(f"Early Stopping: {'Enabled' if self.use_early_stopping else 'Disabled'}")
         
         if self.use_early_stopping:
-            monitor_metric = self.early_stopping_config.get('monitor', 'loss')
-            print(f"Early Stopping Config: patience={self.early_stopping_config.get('patience', 20)}, "
-                  f"min_delta={self.early_stopping_config.get('min_delta', 0.0001)}, "
+            monitor_metric = self.early_stopping_config['monitor']
+            print(f"Early Stopping Config: patience={self.early_stopping_config['patience']}, "
+                  f"min_delta={self.early_stopping_config['min_delta']}, "
                   f"monitor={monitor_metric}")
         
         # Flags to track if models should continue training
@@ -948,7 +951,7 @@ class ExperimentRegression:
             if self.qgcn_model_scheduler is not None and qgcn_continue_training:
                 if isinstance(self.qgcn_model_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                     # Use appropriate metric for plateau scheduler
-                    monitor_metric = self.early_stopping_config.get('monitor', 'loss') if self.use_early_stopping else 'loss'
+                    monitor_metric = self.early_stopping_config['monitor'] if self.use_early_stopping else 'loss'
                     plateau_metric = test_qgcn_r2 if monitor_metric == 'r2' else test_qgcn_mse
                     self.qgcn_model_scheduler.step(plateau_metric)
                 else:
@@ -958,7 +961,7 @@ class ExperimentRegression:
             if self.sgcn_model_scheduler is not None and sgcn_continue_training:
                 if isinstance(self.sgcn_model_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                     # Use appropriate metric for plateau scheduler
-                    monitor_metric = self.early_stopping_config.get('monitor', 'loss') if self.use_early_stopping else 'loss'
+                    monitor_metric = self.early_stopping_config['monitor'] if self.use_early_stopping else 'loss'
                     plateau_metric = test_sgcn_r2 if monitor_metric == 'r2' else test_sgcn_mse
                     self.sgcn_model_scheduler.step(plateau_metric)
                 else:
@@ -970,7 +973,7 @@ class ExperimentRegression:
             
             # Check early stopping conditions
             if self.use_early_stopping:
-                monitor_metric = self.early_stopping_config.get('monitor', 'loss')
+                monitor_metric = self.early_stopping_config['monitor']
                 
                 if qgcn_continue_training and self.qgcn_early_stopping is not None:
                     # Choose the metric to monitor
@@ -1110,7 +1113,7 @@ class ExperimentRegression:
                 model_type = "SGCN"
             elif self.qgcn_model_exists and self.qgcn_specific_run_dir:
                 model_path = os.path.join(self.qgcn_specific_run_dir, "model.pth")
-                model_dir = self.qgcn_specific_run_dir  
+                model_dir = self.qgcn_specific_run_dir
                 model_type = "QGCN"
             else:
                 print("No trained models found for evaluation")
@@ -1126,11 +1129,15 @@ class ExperimentRegression:
             # Get base path (parent of the experiment directory)
             base_path = os.path.dirname(os.path.dirname(os.path.dirname(model_dir)))
             
+            # Get sparsity from the experiment (should be stored as instance variable)
+            sparsity = getattr(self, 'sparsity', 100)  # Default to 100 if not found
+            
             print(f"Evaluating {model_type} model: {model_path}")
             print(f"Using dataset config: {dataset_config}")
+            print(f"Using sparsity: {sparsity}")
             
-            # Initialize evaluator
-            evaluator = ModelEvaluator(model_path, dataset_config, base_path)
+            # Initialize evaluator with sparsity
+            evaluator = ModelEvaluator(model_path, dataset_config, base_path, sparsity=sparsity)
             
             # Evaluate on test set
             print(f"\nEvaluating {model_type} model on test set...")

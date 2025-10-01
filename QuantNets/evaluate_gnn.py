@@ -17,11 +17,12 @@ from util.data_processing import read_cached_graph_dataset
 from torch_geometric.loader import DataLoader as GraphDataLoader
 
 class ModelEvaluator:
-    def __init__(self, model_path, dataset_config, base_path="."):
+    def __init__(self, model_path, dataset_config, base_path=".", sparsity=None):
         """Initialize the model evaluator with target scaling support."""
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.base_path = base_path
         self.dataset_config = dataset_config
+        self.sparsity = sparsity  # Store sparsity
         
         # Load the model and target scaling information
         self.model, self.target_scaling_info = self._load_model_with_scaling(model_path)
@@ -29,6 +30,7 @@ class ModelEvaluator:
         
         print(f"Model loaded from {model_path}")
         print(f"Using device: {self.device}")
+        print(f"Using sparsity level: {sparsity}")
         
         if self.target_scaling_info['use_target_scaling']:
             print(f"Target scaling enabled - Mean: {self.target_scaling_info['target_scaler_mean']:.4f}, "
@@ -36,14 +38,15 @@ class ModelEvaluator:
         else:
             print("Target scaling disabled")
         
-        # Load dataset
+        # Load dataset with sparsity parameter
         self.data_struct = read_cached_graph_dataset(
-            num_train=dataset_config.get('num_train'),
-            num_test=dataset_config.get('num_test'),
+            num_train=dataset_config['num_train'],
+            num_test=dataset_config['num_test'],
             dataset_name=dataset_config['dataset_name'],
-            parent_dir=base_path
+            parent_dir=base_path,
+            sparsity=sparsity  # Pass sparsity to data loading function
         )
-    
+
     def _load_model_with_scaling(self, model_path):
         """Load a saved model and extract target-scaling info, with clean fallbacks."""
         model_dir = os.path.dirname(model_path)
@@ -79,8 +82,8 @@ class ModelEvaluator:
                     if isinstance(exp_config, dict):
                         # Adjust these keys to your real schema
                         uses_scaling = (
-                            exp_config.get('use_target_scaling')
-                            or (exp_config.get('training') or {}).get('use_target_scaling')
+                            exp_config['use_target_scaling']
+                            or (exp_config['training'] or {})['use_target_scaling']
                         )
                     else:
                         # Last-resort heuristic
@@ -434,7 +437,7 @@ def load_config_from_experiment(experiment_dir):
         experiment_dir: Path to experiment directory (e.g., "Experiments_FC/run_DSST_regression_lr_0.0001/sgcn")
     
     Returns:
-        Configuration dictionary
+        Configuration dictionary with sparsity information
     """
     # Try to load from saved experiment config first
     config_path = os.path.join(experiment_dir, "experiment_config.yaml")
@@ -446,21 +449,24 @@ def load_config_from_experiment(experiment_dir):
             dataset_config = exp_config.get('dataset_config', {})
             split_config = exp_config.get('split_config', {})
             
+            # Extract sparsity from experiment_id if available
+            experiment_id = exp_config.get('experiment_id', '')
+            sparsity = 100  # default
+            if 'sparsity_' in experiment_id:
+                try:
+                    sparsity_part = experiment_id.split('sparsity_')[1].split('_')[0]
+                    sparsity = int(sparsity_part)
+                except (IndexError, ValueError):
+                    print(f"Warning: Could not extract sparsity from experiment_id: {experiment_id}")
+            
             return {
                 'dataset_name': dataset_config.get('dataset_name', 'custom_dataset_selfloops_True_edgeft_None_norm_True'),
-                'num_train': split_config.get('train', 27181),
-                'num_test': split_config.get('test', 6796)
+                'num_train': split_config['train'],
+                'num_test': split_config['test'],
+                'sparsity': sparsity
             }
         except Exception as e:
             print(f"Warning: Could not load experiment config: {e}")
-    
-    # Fallback to hardcoded config
-    config = {
-        'dataset_name': 'custom_dataset_selfloops_True_edgeft_None_norm_True',
-        'num_train': 27181,
-        'num_test': 6796
-    }
-    return config
 
 
 def main():
@@ -493,10 +499,11 @@ def main():
     
     # Load dataset configuration
     dataset_config = load_config_from_experiment(os.path.dirname(model_path))
+    sparsity = dataset_config['sparsity']  # Extract sparsity from config
     
     try:
-        # Initialize evaluator
-        evaluator = ModelEvaluator(model_path, dataset_config, base_path)
+        # Initialize evaluator with sparsity
+        evaluator = ModelEvaluator(model_path, dataset_config, base_path, sparsity=sparsity)
         
         # Evaluate on test set
         test_results = evaluator.evaluate_dataset('test', batch_size=64)

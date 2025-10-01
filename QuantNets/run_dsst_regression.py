@@ -130,7 +130,7 @@ def run_single_experiment(config, model_type, dataset_key, run_evaluation=True, 
     print(f"Weight Decay: {weight_decay}")
     print(f"Layers Number: {layers_num}")
     print(f"Train/Test Split: {split_config['train']}/{split_config['test']}")
-    print(f"Scheduler: {scheduler_config.get('scheduler', 'none')}")
+    print(f"Scheduler: {scheduler_config['scheduler']}")
     print(f"Early Stopping: {'Enabled' if early_stopping_config and early_stopping_config.get('enabled', False) else 'Disabled'}")
     print(f"Run Evaluation: {run_evaluation}")
     print(f"{'='*80}\n")
@@ -144,7 +144,7 @@ def run_single_experiment(config, model_type, dataset_key, run_evaluation=True, 
     
     # Create unique experiment ID with dataset key and sparsity
     early_stop_suffix = "_ES" if early_stopping_config and early_stopping_config.get('enabled', False) else ""
-    experiment_id = f"{dataset_key}_sparsity_{sparsity}_regression_{model_type}_grid_{config_idx + 1}_lr_{run_settings}_epochs_{epochs}_drop_{dropout_rate}_wd_{weight_decay}_layers_{layers_num}_scheduler_{scheduler_config.get('scheduler', 'none')}{early_stop_suffix}"
+    experiment_id = f"{dataset_key}_sparsity_{sparsity}_regression_{model_type}_grid_{config_idx + 1}_lr_{run_settings}_epochs_{epochs}_drop_{dropout_rate}_wd_{weight_decay}_layers_{layers_num}_scheduler_{scheduler_config['scheduler']}{early_stop_suffix}"
     
     # Setup experiment with target scaling and sparsity
     experiment = ExperimentRegression(
@@ -225,7 +225,7 @@ def run_single_experiment(config, model_type, dataset_key, run_evaluation=True, 
             f.write(f"Final Training Epoch: {results.get('final_sgcn_epoch', epochs)}\n")
             f.write(f"Saved Model Epoch: {best_test_r2_epoch}\n")
             f.write(f"Early Stopped: {'Yes' if results.get('early_stopped', False) else 'No'}\n")
-            f.write(f"Scheduler: {scheduler_config.get('scheduler', 'none')}\n")
+            f.write(f"Scheduler: {scheduler_config['scheduler']}\n")
             f.write(f"Saved Model Train MSE: {saved_model_train_mse:.5f}\n")
             f.write(f"Saved Model Test MSE: {saved_model_test_mse:.5f}\n")
             f.write(f"Saved Model Train R²: {saved_model_train_r2:.4f}\n")
@@ -322,13 +322,13 @@ def run_grid_search(model_type, dataset_key, run_evaluation=True, use_target_sca
                 'layers_num': config['layers_num'],
                 'lr': config['lr'],
                 'epochs': config['epochs'],
-                'scheduler': config['scheduler_config'].get('scheduler', 'none'),
+                'scheduler': config['scheduler_config']['scheduler'],
                 'results': results,
                 'saved_model_epoch': saved_metrics.get('epoch', 0),
-                'saved_model_train_mse': saved_metrics.get('train_mse', float('inf')),
-                'saved_model_test_mse': saved_metrics.get('test_mse', float('inf')),
-                'saved_model_train_r2': saved_metrics.get('train_r2', 0.0),
-                'saved_model_test_r2': saved_metrics.get('test_r2', 0.0)
+                'saved_model_train_mse': saved_metrics['train_mse'],
+                'saved_model_test_mse': saved_metrics['test_mse'],
+                'saved_model_train_r2': saved_metrics['train_r2'],
+                'saved_model_test_r2': saved_metrics['test_r2']
             })
             
         except Exception as e:
@@ -353,12 +353,12 @@ def run_grid_search(model_type, dataset_key, run_evaluation=True, use_target_sca
     
     # Find best performing model (based on test R²)
     if all_results:
-        valid_results = [r for r in all_results if r.get('saved_model_test_r2', 0.0) > 0.0]
+        valid_results = [r for r in all_results if r['saved_model_test_r2'] > 0.0]
         if valid_results:
-            best_result = max(valid_results, key=lambda x: x.get('saved_model_test_r2', 0.0))  # Max for R²
+            best_result = max(valid_results, key=lambda x: x['saved_model_test_r2'])  # Max for R²
             print(f"\nBest performing model (highest Test R²):")
             print(f"Config {best_result['config_idx'] + 1}: Dropout={best_result['dropout_rate']}, WeightDecay={best_result['weight_decay']}, Layers={best_result['layers_num']}")
-            print(f"Saved Model Test R²: {best_result.get('saved_model_test_r2', 0.0):.4f}")
+            print(f"Saved Model Test R²: {best_result['saved_model_test_r2']:.4f}")
             print(f"Saved Model Train R²: {best_result['saved_model_train_r2']:.4f}")
             print(f"Saved Model Test MSE: {best_result['saved_model_test_mse']:.5f}")
     
@@ -427,7 +427,7 @@ if __name__ == "__main__":
         print("-" * 105)
         
         for config in configs:
-            print(f"{config['config_idx']:<8} {config['dropout_rate']:<10} {config['weight_decay']:<12} {config['layers_num']:<8} {config['lr']:<10} {config['epochs']:<8} {config['split_config']['train']:<8} {config['split_config']['test']:<8} {config['scheduler_config'].get('scheduler', 'none'):<12}")
+            print(f"{config['config_idx']:<8} {config['dropout_rate']:<10} {config['weight_decay']:<12} {config['layers_num']:<8} {config['lr']:<10} {config['epochs']:<8} {config['split_config']['train']:<8} {config['split_config']['test']:<8} {config['scheduler_config']['scheduler']:<12}")
     
     elif args.config:
         # Run specific configurations
