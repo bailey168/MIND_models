@@ -111,3 +111,107 @@ gf_custom:
   
   # Dataset location - no download URLs since it's local
   download_url: {}  # Empty since your data is local
+
+pal_custom:
+  dataset_group: custom
+  dataset_name: custom_dataset_selfloops_True_edgeft_None_norm_True
+  layers_num: 3
+  out_dim: 1  # Single continuous output for regression
+  num_sub_kernels: 7  # Reasonable default for brain connectivity
+  in_channels: 21  # UPDATE: Check your actual node feature count from graph files
+  embedding_dim: 16
+  hidden_channels: 32
+  out_channels: 32
+  pos_descr_dim: -1  # No positional descriptors
+  edge_attr_dim: 1 
+  
+  # Demographics configuration
+  include_demo: True
+  demo_dim: 4  # age(1) + sex(1) + assessment_centre_onehot_drop_first(2) = 4
+
+  # Model specific params - optimized for regression
+  # ChebConv & GraphConv
+  cheb_K: 3
+  cheb_out_sf: 2
+  cheb_hidden_sf: 4
+  graph_out_sf: 2
+  graph_hidden_sf: 1
+  
+  # GCNConv & QGRN
+  gcn_hidden_sf: 4
+  gcn_out_sf: 2
+  
+  # GeneralConv & GATv2Conv
+  general_hidden_heads: 2
+  general_out_sf: 3
+  general_hidden_sf: 3
+  gatv2_hidden_heads: 4
+  gatv2_out_sf: 1
+  gatv2_hidden_sf: 2
+  
+  # SGConv & GenConv
+  sg_K: 3
+  sg_out_sf: 2
+  sg_hidden_sf: 4
+  gen_out_sf: 2
+  gen_hidden_sf: 3
+  
+  # TransformerConv
+  transf_hidden_heads: 2
+  transf_out_sf: 1
+  transf_hidden_sf: 2
+  
+  # Dataset location - no download URLs since it's local
+  download_url: {}  # Empty since your data is local
+
+dsst_custom:
+  dataset_group: custom
+  dataset_name: custom_dataset_selfloops_True_edgeft_None_norm_True
+  layers_num: 3
+  out_dim: 1  # Single continuous output for regression
+  num_sub_kernels: 7  # Reasonable default for brain connectivity
+  in_channels: 21  # UPDATE: Check your actual node feature count from graph files
+  embedding_dim: 16
+  hidden_channels: 32
+  out_channels: 32
+  pos_descr_dim: -1  # No positional descriptors
+  edge_attr_dim: 1 
+  
+  # Demographics configuration
+  include_demo: True
+  demo_dim: 4  # age(1) + sex(1) + assessment_centre_onehot_drop_first(2) = 4
+
+  # Model specific params - optimized for regression
+  # ChebConv & GraphConv
+  cheb_K: 3
+  cheb_out_sf: 2
+  cheb_hidden_sf: 4
+  graph_out_sf: 2
+  graph_hidden_sf: 1
+  
+  # GCNConv & QGRN
+  gcn_hidden_sf: 4
+  gcn_out_sf: 2
+  
+  # GeneralConv & GATv2Conv
+  general_hidden_heads: 2
+  general_out_sf: 3
+  general_hidden_sf: 3
+  gatv2_hidden_heads: 4
+  gatv2_out_sf: 1
+  gatv2_hidden_sf: 2
+  
+  # SGConv & GenConv
+  sg_K: 3
+  sg_out_sf: 2
+  sg_hidden_sf: 4
+  gen_out_sf: 2
+  gen_hidden_sf: 3
+  
+  # TransformerConv
+  transf_hidden_heads: 2
+  transf_out_sf: 1
+  transf_hidden_sf: 2
+  
+  # Dataset location - no download URLs since it's local
+  download_url: {}  # Empty since your data is local

@@ -20,11 +20,31 @@ grid_search:
     weight_decays: [0.1]
     # weight_decays: [0.01]
     layers_nums: [3]
+  pal_custom:
+    # dropout_rates: [0.3, 0.5, 0.7]
+    # weight_decays: [0.001, 0.01, 0.1]
+    # layers_nums: [2]
+    dropout_rates: [0.5]
+    weight_decays: [0.1]
+    # weight_decays: [0.01]
+    layers_nums: [3]
+  tmt_custom:
+    # dropout_rates: [0.3, 0.5, 0.7]
+    # weight_decays: [0.001, 0.01, 0.1]
+    # layers_nums: [2]
+    dropout_rates: [0.5]
+    weight_decays: [0.1]
+    # weight_decays: [0.01]
+    layers_nums: [3]
 
 lrs:
   dsst_custom:
     - 0.001
   gf_custom:
+    - 0.001
+  pal_custom:
+    - 0.001
+  tmt_custom:
     - 0.001
 
 epochs:
@@ -32,12 +52,20 @@ epochs:
     - 200
   gf_custom:
     - 200
+  pal_custom:
+    - 200
+  tmt_custom:
+    - 200
 
 # Number of runs for statistical significance
 runs:
   dsst_custom:
     - 3
   gf_custom:
+    - 3
+  pal_custom:
+    - 3
+  tmt_custom:
     - 3
 
 # Early stopping configurations
@@ -56,6 +84,20 @@ early_stopping:
       restore_best_weights: true
       verbose: true
       monitor: "r2"
+  pal_custom:
+    - enabled: true
+      patience: 25
+      min_delta: 0.0001
+      restore_best_weights: true
+      verbose: true
+      monitor: "r2"
+  tmt_custom:
+    - enabled: true
+      patience: 25
+      min_delta: 0.0001
+      restore_best_weights: true
+      verbose: true
+      monitor: "r2"
 
 # Learning rate scheduler configurations
 schedulers:
@@ -67,6 +109,20 @@ schedulers:
         num_cycles: 0.5
         last_epoch: -1
   gf_custom:
+    - scheduler: "warmup_cosine"
+      scheduler_params:
+        num_warmup_steps: 20
+        num_training_steps: 200
+        num_cycles: 0.5
+        last_epoch: -1
+  pal_custom:
+    - scheduler: "warmup_cosine"
+      scheduler_params:
+        num_warmup_steps: 20
+        num_training_steps: 200
+        num_cycles: 0.5
+        last_epoch: -1
+  tmt_custom:
     - scheduler: "warmup_cosine"
       scheduler_params:
         num_warmup_steps: 20

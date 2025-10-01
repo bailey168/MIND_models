@@ -13,3 +13,13 @@ gf_custom:
   train: 27181
   test: 6796 
   batch_size: 64
+
+pal_custom:
+  train: 19593
+  test: 4899 
+  batch_size: 64
+
+tmt_custom:
+  train: 18689
+  test: 4673 
+  batch_size: 64
