@@ -4,7 +4,7 @@
 #SBATCH --error=/scratch/bng/cartbind/data/logs/graph_logs/convert_graph_PAL15_09_30_%J.err
 #SBATCH --time=12:00:00
 #SBATCH --mem-per-cpu=3G
-#SBATCH --cpus-per-task=12
+#SBATCH --cpus-per-task=8
 #SBATCH --array=0
 #SBATCH --partition=low-moby
 
