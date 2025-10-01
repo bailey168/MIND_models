@@ -1,5 +1,8 @@
 venv/
 QuantNets/Dataset/
+QuantNets/Dataset15/
+QuantNets/Dataset30/
+QuantNets/Dataset100/
 QuantNets/Experiments/
 QuantNets/__pycache__
 QuantNets/gnn/__pycache__
