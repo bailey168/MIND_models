@@ -60,21 +60,21 @@ def create_model(model_type, dataset_config):
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
-def generate_grid_search_configs(run_config, splits_config, datasets_config):
+def generate_grid_search_configs(run_config, splits_config, datasets_config, dataset_key):
     """Generate all combinations of grid search parameters."""
     # Get grid search parameters
-    grid_params = run_config.get('grid_search', {}).get('gf_custom', {})
+    grid_params = run_config.get('grid_search', {}).get(dataset_key, {})
     dropout_rates = grid_params['dropout_rates']
     weight_decays = grid_params['weight_decays']
     layers_nums = grid_params['layers_nums']
 
     # Get base configurations
-    base_lr = run_config['lrs']['gf_custom'][0]
-    base_epochs = run_config['epochs']['gf_custom'][0]
-    base_scheduler = run_config.get('schedulers', {}).get('gf_custom', [{}])[0]
-    base_early_stopping = run_config.get('early_stopping', {}).get('gf_custom', [{}])[0]
-    base_split = splits_config['gf_custom']
-    base_dataset = datasets_config['gf_custom']
+    base_lr = run_config['lrs'][dataset_key][0]
+    base_epochs = run_config['epochs'][dataset_key][0]
+    base_scheduler = run_config.get('schedulers', {}).get(dataset_key, [{}])[0]
+    base_early_stopping = run_config.get('early_stopping', {}).get(dataset_key, [{}])[0]
+    base_split = splits_config[dataset_key]
+    base_dataset = datasets_config[dataset_key]
     
     configs = []
     config_idx = 0
@@ -106,7 +106,7 @@ def generate_grid_search_configs(run_config, splits_config, datasets_config):
     
     return configs
 
-def run_single_experiment(config, model_type, run_evaluation=True, use_target_scaling=True):
+def run_single_experiment(config, model_type, dataset_key, run_evaluation=True, use_target_scaling=True):
     """Run a single experiment with given configuration."""
     
     config_idx = config['config_idx']
@@ -122,6 +122,7 @@ def run_single_experiment(config, model_type, run_evaluation=True, use_target_sc
     
     print(f"\n{'='*80}")
     print(f"Starting Grid Search Experiment {config_idx + 1}")
+    print(f"Dataset: {dataset_key}")
     print(f"Model Type: {model_type}")
     print(f"Learning Rate: {run_settings}")
     print(f"Epochs: {epochs}")
@@ -141,9 +142,9 @@ def run_single_experiment(config, model_type, run_evaluation=True, use_target_sc
     optim_params = {"lr": run_settings, "weight_decay": weight_decay}
     optim_params.update(scheduler_config)
     
-    # Create unique experiment ID
+    # Create unique experiment ID with dataset key
     early_stop_suffix = "_ES" if early_stopping_config and early_stopping_config.get('enabled', False) else ""
-    experiment_id = f"{TARGET}_regression_{model_type}_grid_{config_idx + 1}_lr_{run_settings}_epochs_{epochs}_drop_{dropout_rate}_wd_{weight_decay}_layers_{layers_num}_scheduler_{scheduler_config.get('scheduler', 'none')}{early_stop_suffix}"
+    experiment_id = f"{dataset_key}_regression_{model_type}_grid_{config_idx + 1}_lr_{run_settings}_epochs_{epochs}_drop_{dropout_rate}_wd_{weight_decay}_layers_{layers_num}_scheduler_{scheduler_config.get('scheduler', 'none')}{early_stop_suffix}"
     
     # Setup experiment with target scaling
     experiment = ExperimentRegression(
@@ -201,7 +202,8 @@ def run_single_experiment(config, model_type, run_evaluation=True, use_target_sc
             'early_stopping_config': early_stopping_config,
             'dropout_rate': dropout_rate,
             'weight_decay': weight_decay,
-            'layers_num': layers_num
+            'layers_num': layers_num,
+            'dataset_key': dataset_key  # Add dataset key to config
         }
         config_path = os.path.join(experiment.sgcn_specific_run_dir, "experiment_config.yaml")
         with open(config_path, 'w') as f:
@@ -212,6 +214,7 @@ def run_single_experiment(config, model_type, run_evaluation=True, use_target_sc
         with open(summary_path, 'w') as f:
             f.write(f"Grid Search Experiment Summary\n")
             f.write(f"==============================\n\n")
+            f.write(f"Dataset: {dataset_key}\n")
             f.write(f"Model Type: {model_type}\n")
             f.write(f"Learning Rate: {run_settings}\n")
             f.write(f"Dropout Rate: {dropout_rate}\n")
@@ -225,7 +228,7 @@ def run_single_experiment(config, model_type, run_evaluation=True, use_target_sc
             f.write(f"Saved Model Train MSE: {saved_model_train_mse:.5f}\n")
             f.write(f"Saved Model Test MSE: {saved_model_test_mse:.5f}\n")
             f.write(f"Saved Model Train R²: {saved_model_train_r2:.4f}\n")
-            f.write(f"Saved Model Test R²: {saved_model_test_r2:.4f}\n")  # Added this
+            f.write(f"Saved Model Test R²: {saved_model_test_r2:.4f}\n")
             
             if 'evaluation' in results and results['evaluation']:
                 eval_results = results['evaluation']
@@ -234,13 +237,14 @@ def run_single_experiment(config, model_type, run_evaluation=True, use_target_sc
                 f.write(f"Evaluation Train R² Score: {eval_results['train_results']['r2_score']:.4f}\n")
     
     print(f"\nGrid Search Experiment {config_idx + 1} completed!")
+    print(f"Dataset: {dataset_key}")
     print(f"Dropout: {dropout_rate}, Weight Decay: {weight_decay}, Layers: {layers_num}")
     print(f"Planned epochs: {epochs}, Final training epoch: {results.get('final_sgcn_epoch', epochs)}")
     print(f"Saved model from epoch: {best_test_r2_epoch}")
     print(f"Saved Model Train MSE: {saved_model_train_mse:.5f}")
     print(f"Saved Model Test MSE: {saved_model_test_mse:.5f}")
     print(f"Saved Model Train R²: {saved_model_train_r2:.4f}")
-    print(f"Saved Model Test R²: {saved_model_test_r2:.4f}")  # Added this
+    print(f"Saved Model Test R²: {saved_model_test_r2:.4f}")
     
     # Print evaluation summary if available
     if 'evaluation' in results and results['evaluation']:
@@ -270,7 +274,7 @@ def run_single_experiment(config, model_type, run_evaluation=True, use_target_sc
     
     return results
 
-def run_grid_search(model_type, run_evaluation=True, use_target_scaling=True):
+def run_grid_search(model_type, dataset_key, run_evaluation=True, use_target_scaling=True):
     """Run grid search experiments for all parameter combinations."""
     
     # Load configurations
@@ -279,14 +283,15 @@ def run_grid_search(model_type, run_evaluation=True, use_target_scaling=True):
     run_config = load_config(os.path.join(current_dir, 'run.settings_DSST.yaml'))
     
     # Generate all grid search configurations
-    configs = generate_grid_search_configs(run_config, splits_config, datasets_config)
+    configs = generate_grid_search_configs(run_config, splits_config, datasets_config, dataset_key)
     
     print(f"Running Grid Search with {len(configs)} parameter combinations")
+    print(f"Dataset: {dataset_key}")
     print(f"Model: {model_type}")
     print(f"Post-training evaluation: {'Enabled' if run_evaluation else 'Disabled'}")
     
     # Print grid search overview
-    grid_params = run_config.get('grid_search', {}).get('gf_custom', {})
+    grid_params = run_config.get('grid_search', {}).get(dataset_key, {})
     dropout_rates = grid_params['dropout_rates']
     weight_decays = grid_params['weight_decays']
     layers_nums = grid_params['layers_nums']
@@ -302,13 +307,14 @@ def run_grid_search(model_type, run_evaluation=True, use_target_scaling=True):
     # Run all experiments
     for config in configs:
         try:
-            results = run_single_experiment(config, model_type, run_evaluation, use_target_scaling)
+            results = run_single_experiment(config, model_type, dataset_key, run_evaluation, use_target_scaling)
             
             # Get saved model metrics
             saved_metrics = results.get('saved_model_metrics', {})
             
             all_results.append({
                 'config_idx': config['config_idx'],
+                'dataset_key': dataset_key,
                 'model_type': model_type,
                 'dropout_rate': config['dropout_rate'],
                 'weight_decay': config['weight_decay'],
@@ -331,7 +337,7 @@ def run_grid_search(model_type, run_evaluation=True, use_target_scaling=True):
     
     # Print summary of all experiments
     print(f"\n{'='*180}")
-    print(f"GRID SEARCH SUMMARY - {model_type} MODEL")
+    print(f"GRID SEARCH SUMMARY - {dataset_key.upper()} DATASET - {model_type} MODEL")
     print(f"{'='*180}")
     print(f"{'Config':<8} {'Dropout':<10} {'WeightDec':<12} {'Layers':<8} {'LR':<10} {'Epochs':<8} {'Scheduler':<12} {'Train MSE':<12} {'Test MSE':<12} {'Train R²':<10} {'Test R²':<10}")
     print("-" * 180)
@@ -355,10 +361,10 @@ def run_grid_search(model_type, run_evaluation=True, use_target_scaling=True):
             print(f"Saved Model Train R²: {best_result['saved_model_train_r2']:.4f}")
             print(f"Saved Model Test MSE: {best_result['saved_model_test_mse']:.5f}")
     
-    print(f"\nGrid Search for {TARGET} regression with {model_type} completed!")
+    print(f"\nGrid Search for {dataset_key} regression with {model_type} completed!")
     return all_results
 
-def run_specific_grid_configs(config_indices, model_type, run_evaluation=True, use_target_scaling=True):
+def run_specific_grid_configs(config_indices, model_type, dataset_key, run_evaluation=True, use_target_scaling=True):
     """Run specific grid search configurations by their indices (0-based)."""
     
     # Load configurations
@@ -367,7 +373,7 @@ def run_specific_grid_configs(config_indices, model_type, run_evaluation=True, u
     run_config = load_config(os.path.join(current_dir, 'run.settings_DSST.yaml'))
     
     # Generate all grid search configurations
-    configs = generate_grid_search_configs(run_config, splits_config, datasets_config)
+    configs = generate_grid_search_configs(run_config, splits_config, datasets_config, dataset_key)
     
     results = []
     
@@ -377,7 +383,7 @@ def run_specific_grid_configs(config_indices, model_type, run_evaluation=True, u
             continue
             
         try:
-            result = run_single_experiment(configs[i], model_type, run_evaluation, use_target_scaling)
+            result = run_single_experiment(configs[i], model_type, dataset_key, run_evaluation, use_target_scaling)
             results.append(result)
         except Exception as e:
             print(f"Error in grid search experiment {i + 1}: {str(e)}")
@@ -389,8 +395,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run grid search regression experiments")
     parser.add_argument("--config", type=int, nargs='+', 
                       help="Specific configuration indices to run (0-based). If not provided, runs all grid combinations.")
-    parser.add_argument("--model", type=str, choices=['GraphConv', 'GATv2'],
+    parser.add_argument("--model", type=str, choices=['GraphConv', 'GATv2'], required=True,
                       help="Model type to use: GraphConv or GATv2")
+    parser.add_argument("--dataset", type=str, choices=['gf_custom', 'dsst_custom', 'pal_custom', 'tmt_custom'], required=True,
+                      help="Dataset to use: gf_custom, dsst_custom, pal_custom, or tmt_custom")
     parser.add_argument("--list-configs", action="store_true", 
                       help="List all available grid search configurations and exit")
     parser.add_argument("--no-eval", action="store_true", 
@@ -409,9 +417,9 @@ if __name__ == "__main__":
         splits_config = load_config(os.path.join(current_dir, 'data.splits_DSST.yaml'))
         run_config = load_config(os.path.join(current_dir, 'run.settings_DSST.yaml'))
         
-        configs = generate_grid_search_configs(run_config, splits_config, datasets_config)
+        configs = generate_grid_search_configs(run_config, splits_config, datasets_config, args.dataset)
         
-        print("Available Grid Search configurations:")
+        print(f"Available Grid Search configurations for {args.dataset}:")
         print(f"{'Index':<8} {'Dropout':<10} {'WeightDec':<12} {'Layers':<8} {'LR':<10} {'Epochs':<8} {'Train':<8} {'Test':<8} {'Scheduler':<12}")
         print("-" * 105)
         
@@ -420,9 +428,9 @@ if __name__ == "__main__":
     
     elif args.config:
         # Run specific configurations
-        print(f"Running specific grid search configurations: {args.config} with {args.model} model")
+        print(f"Running specific grid search configurations: {args.config} with {args.model} model on {args.dataset} dataset")
         print(f"Post-training evaluation: {'Enabled' if run_evaluation else 'Disabled'}")
-        run_specific_grid_configs(args.config, args.model, run_evaluation, use_target_scaling)
+        run_specific_grid_configs(args.config, args.model, args.dataset, run_evaluation, use_target_scaling)
     else:
         # Run all grid search configurations
-        run_grid_search(args.model, run_evaluation, use_target_scaling)
+        run_grid_search(args.model, args.dataset, run_evaluation, use_target_scaling)

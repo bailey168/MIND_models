@@ -4,6 +4,14 @@
 
 # Grid search parameters - all combinations will be tested
 grid_search:
+  dsst_custom:
+    # dropout_rates: [0.3, 0.5, 0.7]
+    # weight_decays: [0.001, 0.01, 0.1]
+    # layers_nums: [2]
+    dropout_rates: [0.5]
+    weight_decays: [0.1]
+    # weight_decays: [0.01]
+    layers_nums: [3]
   gf_custom:
     # dropout_rates: [0.3, 0.5, 0.7]
     # weight_decays: [0.001, 0.01, 0.1]
@@ -21,7 +29,7 @@ lrs:
 
 epochs:
   dsst_custom:
-    - 500
+    - 200
   gf_custom:
     - 200
 
@@ -52,13 +60,13 @@ early_stopping:
 # Learning rate scheduler configurations
 schedulers:
   dsst_custom:
-    # StepLR: Decay LR by gamma every step_size epochs
-    - scheduler: "step"
+    - scheduler: "warmup_cosine"
       scheduler_params:
-        step_size: 50
-        gamma: 0.5
+        num_warmup_steps: 20
+        num_training_steps: 200
+        num_cycles: 0.5
+        last_epoch: -1
   gf_custom:
-    # Warmup Cosine: Linear warmup followed by cosine decay
     - scheduler: "warmup_cosine"
       scheduler_params:
         num_warmup_steps: 20
