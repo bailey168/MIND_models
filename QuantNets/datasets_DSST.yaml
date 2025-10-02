@@ -164,7 +164,7 @@ pal_custom:
   # Dataset location - no download URLs since it's local
   download_url: {}  # Empty since your data is local
 
-dsst_custom:
+tmt_custom:
   dataset_group: custom
   dataset_name: custom_dataset_selfloops_True_edgeft_None_norm_True
   layers_num: 3
