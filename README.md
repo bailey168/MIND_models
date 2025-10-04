@@ -1,7 +1,8 @@
 # Cognitive performance prediction using ML and DL models trained on Brain MRI data
 
 Repository of code and resources for processing, modelling, and analysis of MIND and other brain MRI modalities, with a focus on predictive machine learning (ElasticNet regression, PLS regression, XGBoost) and deep learning (GNNs) modelling. Main analyses are performed on UK Biobank dataset.
-<img width="8181" height="4583" alt="MScAC Aria Poster" src="https://github.com/user-attachments/assets/23fa2c33-817a-4611-813e-9ca18f270799" />
+<img width="8181" height="4583" alt="MScAC Aria Poster Figure Final" src="https://github.com/user-attachments/assets/7a0ed337-8f44-4ba3-9fb2-0b2cc0ccc673" />
+
 
 
 ## Data Wrangling + MRI Processing
